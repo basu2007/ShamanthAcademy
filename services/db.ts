@@ -1,18 +1,23 @@
-
 import { User } from '../types';
 import { ADMIN_CREDENTIALS } from '../constants';
 
-const USERS_KEY = 'vidyaflow_users_v2';
-// In AWS, you would set this via Amplify Environment Variables
-const REMOTE_API_URL = (window as any).process?.env?.AWS_API_URL || null;
+const USERS_KEY = 'shamanth_academy_users_v1';
+/**
+ * During AWS Amplify deployment, the build script will replace this placeholder 
+ * with your actual API Gateway URL via the amplify.yml configuration.
+ */
+const REMOTE_API_URL = "INSERT_AWS_API_URL_HERE";
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
- * Standardized fetch wrapper for AWS Lambda
+ * Standardized fetch wrapper for AWS Lambda via API Gateway
  */
 async function cloudFetch(action: string, body: any = {}) {
-  if (!REMOTE_API_URL) return null;
+  // If the placeholder hasn't been replaced, skip cloud and use local storage
+  if (!REMOTE_API_URL || REMOTE_API_URL.includes("INSERT_AWS")) {
+    return null;
+  }
   
   try {
     const response = await fetch(REMOTE_API_URL, {
@@ -20,19 +25,31 @@ async function cloudFetch(action: string, body: any = {}) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, ...body })
     });
-    return await response.json();
+    
+    if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`AWS API Error: ${response.status} - ${errText}`);
+    }
+    
+    const data = await response.json();
+    console.log(`Cloud Action [${action}] Success`);
+    return data;
   } catch (error) {
-    console.error("AWS Cloud Error:", error);
+    console.warn("Cloud Sync Unavailable (using local fallback):", error);
     return null;
   }
 }
 
 export const getStoredUsers = async (): Promise<User[]> => {
   const cloudData = await cloudFetch('getAllUsers');
-  if (cloudData) return cloudData;
+  if (cloudData && Array.isArray(cloudData)) {
+    // Sync local storage with cloud data for offline resilience
+    localStorage.setItem(USERS_KEY, JSON.stringify(cloudData));
+    return cloudData;
+  }
 
-  // Fallback to LocalStorage
-  await delay(300);
+  // Fallback to LocalStorage for offline or non-AWS mode
+  await delay(200);
   const users = localStorage.getItem(USERS_KEY);
   if (!users) {
     const admin: User = {
@@ -52,11 +69,7 @@ export const getStoredUsers = async (): Promise<User[]> => {
 };
 
 export const saveUsers = async (users: User[]): Promise<void> => {
-  const success = await cloudFetch('batchUpdateUsers', { users });
-  if (success) return;
-
-  // Fallback to LocalStorage
-  await delay(200);
+  // Local state update
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
 };
 

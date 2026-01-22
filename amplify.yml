@@ -4,8 +4,9 @@ frontend:
   phases:
     build:
       commands:
-        # No build step required for ESM/Importmap projects
-        - echo "Direct ESM deployment starting..."
+        # Inject the environment variable into the DB service file
+        - sed -i "s|INSERT_AWS_API_URL_HERE|$AWS_API_URL|g" services/db.ts
+        - echo "Build complete. API URL injected: $AWS_API_URL"
   artifacts:
     baseDirectory: .
     files:
