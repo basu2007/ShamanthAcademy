@@ -25,19 +25,27 @@ try {
 
   // 3. Bundle JS with esbuild
   console.log('📦 Bundling application source...');
-  // We use npx to ensure the local esbuild version is used
+  // Entry point is index.tsx, output is dist/index.js
   const esbuildCommand = 'npx esbuild index.tsx --bundle --outfile=dist/index.js --format=esm --jsx=automatic --minify --external:react --external:react-dom';
   execSync(esbuildCommand, { stdio: 'inherit', shell: true });
 
-  // 4. Copy static assets
-  console.log('📄 Copying assets to dist...');
+  // 4. Copy static assets and patch index.html for production
+  console.log('📄 Processing and copying assets to dist...');
   ASSETS.forEach(fileName => {
     const src = path.resolve(__dirname, fileName);
     const dest = path.resolve(DIST_DIR, fileName);
     
     if (fs.existsSync(src)) {
-      fs.copyFileSync(src, dest);
-      console.log(`   ✅ Copied: ${fileName}`);
+      if (fileName === 'index.html') {
+        // We need to change the script source from index.tsx to index.js for the built version
+        let htmlContent = fs.readFileSync(src, 'utf8');
+        htmlContent = htmlContent.replace('src="index.tsx"', 'src="index.js"');
+        fs.writeFileSync(dest, htmlContent);
+        console.log(`   ✅ Patched and copied: ${fileName} (Redirected to index.js)`);
+      } else {
+        fs.copyFileSync(src, dest);
+        console.log(`   ✅ Copied: ${fileName}`);
+      }
     } else {
       console.warn(`   ⚠️ Warning: Source file ${fileName} not found!`);
     }

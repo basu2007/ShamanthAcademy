@@ -1,18 +1,17 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { User, Course, AuthState } from './types';
-import { MOCK_COURSES, CATEGORIES } from './constants';
-import * as db from './services/db';
+import { User, Course, AuthState } from './types.ts';
+import { MOCK_COURSES, CATEGORIES } from './constants.tsx';
+import * as db from './services/db.ts';
 
 // Components
-import Header from './components/Header';
-import CourseCard from './components/CourseCard';
-import CourseModal from './components/CourseModal';
-import AuthModal from './components/AuthModal';
-import AdminDashboard from './components/AdminDashboard';
-import Footer from './components/Footer';
-import InfoView, { InfoTopic } from './components/InfoView';
-import HeroCarousel from './components/HeroCarousel';
+import Header from './components/Header.tsx';
+import CourseCard from './components/CourseCard.tsx';
+import CourseModal from './components/CourseModal.tsx';
+import AuthModal from './components/AuthModal.tsx';
+import AdminDashboard from './components/AdminDashboard.tsx';
+import Footer from './components/Footer.tsx';
+import InfoView, { InfoTopic } from './components/InfoView.tsx';
+import HeroCarousel from './components/HeroCarousel.tsx';
 
 type AppView = 'home' | 'admin' | 'info';
 
@@ -32,11 +31,15 @@ const App: React.FC = () => {
     const checkAuth = async () => {
       const saved = localStorage.getItem('active_session');
       if (saved) {
-        const user = JSON.parse(saved) as User;
-        const users = await db.getStoredUsers();
-        const freshUser = users.find(u => u.id === user.id);
-        if (freshUser) {
-          setAuth({ user: freshUser, isAuthenticated: true });
+        try {
+          const user = JSON.parse(saved) as User;
+          const users = await db.getStoredUsers();
+          const freshUser = users.find(u => u.id === user.id);
+          if (freshUser) {
+            setAuth({ user: freshUser, isAuthenticated: true });
+          }
+        } catch (e) {
+          console.error("Session recovery failed", e);
         }
       }
     };
