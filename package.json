@@ -12,8 +12,7 @@
     "typescript": "^5.0.0"
   },
   "scripts": {
-    "clean": "rm -rf dist || rd /s /q dist",
-    "build": "npm run clean && mkdir dist && esbuild index.tsx --bundle --outfile=dist/index.js --format=esm --jsx=automatic --minify --external:react --external:react-dom && cp index.html dist/ && cp metadata.json dist/",
+    "build": "node build.js",
     "deploy": "git add . && git commit -m 'Update' && git push origin dev",
     "manual-trigger": "aws amplify start-job --app-id d30vctrrd6dday --branch-name dev --job-type RELEASE"
   }
