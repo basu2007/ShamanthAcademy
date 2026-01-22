@@ -1,15 +1,23 @@
-
 version: 1
 frontend:
   phases:
+    preBuild:
+      commands:
+        - npm install
     build:
       commands:
-        # Inject the environment variable into the DB service file
+        # 1. Inject the API URL into the code from Amplify Environment Variables
         - sed -i "s|INSERT_AWS_API_URL_HERE|$AWS_API_URL|g" services/db.ts
-        - echo "Build complete. API URL injected: $AWS_API_URL"
+        # 2. Run the build script defined in package.json
+        - npm run build
   artifacts:
     baseDirectory: .
     files:
-      - '**/*'
+      - 'index.html'
+      - 'index.js'
+      - 'metadata.json'
+      - 'services/**/*'
+      - 'components/**/*'
   cache:
-    paths: []
+    paths:
+      - node_modules/**/*

@@ -8,13 +8,19 @@ const USERS_KEY = 'shamanth_academy_users_v1';
  */
 const REMOTE_API_URL = "INSERT_AWS_API_URL_HERE";
 
+// Log connection status on load for developer transparency
+if (!REMOTE_API_URL.includes("INSERT_AWS")) {
+  console.log(`%c Shamanth Academy: Connected to Cloud Backend at ${REMOTE_API_URL} `, 'background: #4338ca; color: #fff; font-weight: bold; padding: 4px;');
+} else {
+  console.log("%c Shamanth Academy: Running in Local Fallback Mode (LocalStorage) ", 'background: #f59e0b; color: #000; font-weight: bold; padding: 4px;');
+}
+
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 /**
  * Standardized fetch wrapper for AWS Lambda via API Gateway
  */
 async function cloudFetch(action: string, body: any = {}) {
-  // If the placeholder hasn't been replaced, skip cloud and use local storage
   if (!REMOTE_API_URL || REMOTE_API_URL.includes("INSERT_AWS")) {
     return null;
   }
@@ -32,7 +38,6 @@ async function cloudFetch(action: string, body: any = {}) {
     }
     
     const data = await response.json();
-    console.log(`Cloud Action [${action}] Success`);
     return data;
   } catch (error) {
     console.warn("Cloud Sync Unavailable (using local fallback):", error);
@@ -43,12 +48,10 @@ async function cloudFetch(action: string, body: any = {}) {
 export const getStoredUsers = async (): Promise<User[]> => {
   const cloudData = await cloudFetch('getAllUsers');
   if (cloudData && Array.isArray(cloudData)) {
-    // Sync local storage with cloud data for offline resilience
     localStorage.setItem(USERS_KEY, JSON.stringify(cloudData));
     return cloudData;
   }
 
-  // Fallback to LocalStorage for offline or non-AWS mode
   await delay(200);
   const users = localStorage.getItem(USERS_KEY);
   if (!users) {
@@ -69,7 +72,6 @@ export const getStoredUsers = async (): Promise<User[]> => {
 };
 
 export const saveUsers = async (users: User[]): Promise<void> => {
-  // Local state update
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
 };
 

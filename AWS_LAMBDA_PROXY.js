@@ -2,31 +2,42 @@
 /**
  * AWS LAMBDA BACKEND (Node.js 18+)
  * Use this code to create a Lambda function and connect it to an API Gateway.
- * Ensure your Lambda Role has "AmazonDynamoDBFullAccess" permission.
+ * 
+ * SETUP:
+ * 1. Create a Lambda with Runtime: Node.js 18.x or 20.x
+ * 2. Attach "AmazonDynamoDBFullAccess" policy to the Lambda Execution Role.
  */
 
-const AWS = require('aws-sdk');
-const docClient = new AWS.DynamoDB.DocumentClient();
+const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
+const { 
+  DynamoDBDocumentClient, 
+  ScanCommand, 
+  PutCommand, 
+  GetCommand, 
+  UpdateCommand 
+} = require("@aws-sdk/lib-dynamodb");
+
+const client = new DynamoDBClient({});
+const docClient = DynamoDBDocumentClient.from(client);
 const TABLE_NAME = "Shamanth_Users";
 
 exports.handler = async (event) => {
-    // Handle preflight OPTIONS requests if not handled by API Gateway
+    // Handle preflight OPTIONS requests from browser
     if (event.httpMethod === 'OPTIONS') {
-        return response(200, { message: "OK" });
+        return response(200, { message: "CORS Preflight OK" });
     }
 
-    const body = JSON.parse(event.body);
-    const { action } = body;
-    
-    let result;
-    
     try {
+        const body = JSON.parse(event.body || "{}");
+        const { action } = body;
+        
         switch (action) {
-            case 'getAllUsers':
-                result = await docClient.scan({ TableName: TABLE_NAME }).promise();
-                return response(200, result.Items);
+            case 'getAllUsers': {
+                const data = await docClient.send(new ScanCommand({ TableName: TABLE_NAME }));
+                return response(200, data.Items);
+            }
                 
-            case 'register':
+            case 'register': {
                 const newUser = {
                     id: Date.now().toString(),
                     email: body.email,
@@ -36,49 +47,54 @@ exports.handler = async (event) => {
                     pendingUnlocks: [],
                     lastActive: new Date().toISOString()
                 };
-                await docClient.put({ TableName: TABLE_NAME, Item: newUser }).promise();
+                await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: newUser }));
                 return response(200, newUser);
+            }
 
-            case 'login':
-                const users = await docClient.scan({ TableName: TABLE_NAME }).promise();
-                const user = users.Items.find(u => u.email === body.email && u.pin === body.pin);
+            case 'login': {
+                const scanData = await docClient.send(new ScanCommand({ TableName: TABLE_NAME }));
+                const user = scanData.Items.find(u => u.email === body.email && u.pin === body.pin);
                 if (user) {
                     user.lastActive = new Date().toISOString();
-                    await docClient.put({ TableName: TABLE_NAME, Item: user }).promise();
+                    await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: user }));
                     return response(200, user);
                 }
                 return response(401, { error: "Invalid credentials" });
+            }
 
-            case 'requestUnlock':
-                const userToReq = (await docClient.get({ TableName: TABLE_NAME, Key: { id: body.userId } }).promise()).Item;
-                if (userToReq && !userToReq.pendingUnlocks.includes(body.courseId)) {
-                    userToReq.pendingUnlocks.push(body.courseId);
-                    userToReq.lastActive = new Date().toISOString();
-                    await docClient.put({ TableName: TABLE_NAME, Item: userToReq }).promise();
+            case 'requestUnlock': {
+                const { Item: user } = await docClient.send(new GetCommand({ TableName: TABLE_NAME, Key: { id: body.userId } }));
+                if (user && !user.pendingUnlocks.includes(body.courseId)) {
+                    user.pendingUnlocks.push(body.courseId);
+                    user.lastActive = new Date().toISOString();
+                    await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: user }));
                 }
                 return response(200, { success: true });
+            }
 
-            case 'approveUnlock':
-                const seeker = (await docClient.get({ TableName: TABLE_NAME, Key: { id: body.userId } }).promise()).Item;
+            case 'approveUnlock': {
+                const { Item: seeker } = await docClient.send(new GetCommand({ TableName: TABLE_NAME, Key: { id: body.userId } }));
                 if (seeker) {
                     seeker.enrolledCourses = [...new Set([...seeker.enrolledCourses, body.courseId])];
                     seeker.pendingUnlocks = seeker.pendingUnlocks.filter(id => id !== body.courseId);
                     seeker.lastActive = new Date().toISOString();
-                    await docClient.put({ TableName: TABLE_NAME, Item: seeker }).promise();
+                    await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: seeker }));
                 }
                 return response(200, { success: true });
+            }
 
-            case 'lockCourse':
-                const seekerToLock = (await docClient.get({ TableName: TABLE_NAME, Key: { id: body.userId } }).promise()).Item;
-                if (seekerToLock) {
-                    seekerToLock.enrolledCourses = seekerToLock.enrolledCourses.filter(id => id !== body.courseId);
-                    seekerToLock.lastActive = new Date().toISOString();
-                    await docClient.put({ TableName: TABLE_NAME, Item: seekerToLock }).promise();
+            case 'lockCourse': {
+                const { Item: seeker } = await docClient.send(new GetCommand({ TableName: TABLE_NAME, Key: { id: body.userId } }));
+                if (seeker) {
+                    seeker.enrolledCourses = seeker.enrolledCourses.filter(id => id !== body.courseId);
+                    seeker.lastActive = new Date().toISOString();
+                    await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: seeker }));
                 }
                 return response(200, { success: true });
+            }
 
             default:
-                return response(400, { error: "Action not supported" });
+                return response(400, { error: `Action '${action}' not supported` });
         }
     } catch (err) {
         console.error("Lambda Error:", err);
@@ -86,12 +102,15 @@ exports.handler = async (event) => {
     }
 };
 
-const response = (statusCode, body) => ({
-    statusCode,
-    headers: {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
-        "Access-Control-Allow-Methods": "OPTIONS,POST"
-    },
-    body: JSON.stringify(body)
-});
+function response(statusCode, body) {
+    return {
+        statusCode,
+        headers: {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Content-Type,X-Amz-Date,Authorization,X-Api-Key,X-Amz-Security-Token",
+            "Access-Control-Allow-Methods": "OPTIONS,POST",
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(body)
+    };
+}
