@@ -1,47 +1,44 @@
-# Shamanth Academy: Deployment Commands
+# Shamanth Academy: Final Deployment Fixes
 
-### Why `amplify deploy` doesn't work
-The `amplify` CLI is for a different type of project. For your website, you use **Amplify Hosting**.
+### 1. Fix the "Zipping artifacts failed" Error
+Your Amplify CLI is looking for a folder that isn't there. Run this command in your VSCode terminal to tell it to look at the new `dist` folder:
+
+```bash
+# Update the local configuration to use the 'dist' folder
+amplify configure project
+```
+*When prompted:*
+- Distribution Directory Path: Type `dist` and press Enter.
+- Build Command: `npm run build`
+- Start Command: `npm run start`
+
+Now, `amplify publish` will work perfectly.
 
 ---
 
-### Option 1: The GitHub "Push" Command (Recommended)
-This is the standard way. Every time you run these, AWS starts a new build automatically.
+### 2. Command to Trigger GitHub Build Manually
+If you have pushed to GitHub but the build hasn't started, you can "force" it from your terminal using the AWS CLI:
+
+```bash
+aws amplify start-job --app-id d30vctrrd6dday --branch-name dev --job-type RELEASE
+```
+
+---
+
+### 3. The "Standard" Routine
+From now on, use this simple 1-2-3 routine in VSCode:
+
+**Step 1: Build locally to check for errors**
+```bash
+npm run build
+```
+
+**Step 2: Push to GitHub (This triggers the AWS Cloud Build)**
 ```bash
 git add .
-git commit -m "Update Shamanth Academy"
+git commit -m "Fixed deployment structure"
 git push origin dev
 ```
 
-**If this doesn't trigger a build:**
-1. Go to **AWS Amplify Console**.
-2. Go to **App Settings** > **Webhooks**.
-3. If no webhook exists, go to **Hosting environments** and re-connect your GitHub.
-
----
-
-### Option 2: The "Force Deploy" Terminal Command
-If GitHub isn't working, you can manually upload your code using the **AWS CLI**. Run this in your VSCode terminal:
-
-**Step A: Zip your code**
-```bash
-# Windows (PowerShell)
-Compress-Archive -Path index.html, index.tsx, package.json, amplify.yml, metadata.json, components, services, constants.tsx, types.ts -DestinationPath site.zip -Force
-```
-
-**Step B: Push to AWS**
-```bash
-# Replace YOUR_APP_ID with d30vctrrd6dday
-aws amplify start-deployment --app-id d30vctrrd6dday --branch-name dev --source-url site.zip
-```
-
----
-
-### Troubleshooting the "Welcome" Screen
-If you see the AWS Welcome screen even after a "Success" message:
-1. Your `index.html` must be in the **root** folder (it is).
-2. Your `amplify.yml` must list `index.html` in the artifacts (I just updated this for you).
-3. **Check the Build Logs**: In the Amplify Console, click on the "Build" step. If it shows an error in `npm run build`, your `index.js` was never created.
-
-### Environment Variables
-Don't forget to add your `AWS_API_URL` in **App Settings > Environment Variables** in the AWS UI!
+**Step 3: Monitor (Optional)**
+Check the progress here: [Amplify Console - dev branch](https://console.aws.amazon.com/amplify/home#/d30vctrrd6dday/dev)

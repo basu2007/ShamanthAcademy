@@ -12,8 +12,9 @@
     "typescript": "^5.0.0"
   },
   "scripts": {
-    "build": "esbuild index.tsx --bundle --outfile=index.js --format=esm --jsx=automatic --minify --external:react --external:react-dom",
+    "clean": "rm -rf dist || rd /s /q dist",
+    "build": "npm run clean && mkdir dist && esbuild index.tsx --bundle --outfile=dist/index.js --format=esm --jsx=automatic --minify --external:react --external:react-dom && cp index.html dist/ && cp metadata.json dist/",
     "deploy": "git add . && git commit -m 'Update' && git push origin dev",
-    "zip": "zip -r deploy.zip index.html package.json amplify.yml metadata.json components/ services/ constants.tsx types.ts index.tsx"
+    "manual-trigger": "aws amplify start-job --app-id d30vctrrd6dday --branch-name dev --job-type RELEASE"
   }
 }
