@@ -1,57 +1,47 @@
-# Shamanth Academy: How to Deploy
+# Shamanth Academy: Deployment Commands
 
-### Option 1: Deploy via GitHub (The Best Way)
-
-This method ensures that every time you save and "Push" your code in VSCode, your website updates automatically.
-
-1.  **Create a Repo**: Go to [GitHub](https://github.com/new) and create a private repository named `shamanth-academy`.
-2.  **Run these commands in VSCode Terminal** (Ctrl + `):
-    ```bash
-    git init
-    git add .
-    git commit -m "Initial commit"
-    git branch -M dev
-    git remote add origin https://github.com/YOUR_GITHUB_USERNAME/shamanth-academy.git
-    git push -u origin dev
-    ```
-3.  **Connect to Amplify**:
-    - Open your [AWS Amplify Console](https://console.aws.amazon.com/amplify/home).
-    - Select your app `d30vctrrd6dday`.
-    - Go to **App Settings** > **General**.
-    - Click **Reconnect repository**.
-    - Select **GitHub**, find your `shamanth-academy` repo, and select the `dev` branch.
-    - **Crucial**: Ensure you check the box for "Monorepo" **only if** your code is in a subfolder. If your files are in the root, leave it unchecked.
+### Why `amplify deploy` doesn't work
+The `amplify` CLI is for a different type of project. For your website, you use **Amplify Hosting**.
 
 ---
 
-### Option 2: Deploy via VSCode Terminal (Zip Method)
-
-If you don't want to use GitHub, you can use the AWS CLI to push the code directly.
-
-1.  **Install AWS CLI** and run `aws configure`.
-2.  **Zip and Deploy Command**:
-    ```bash
-    # Windows (PowerShell)
-    Compress-Archive -Path * -DestinationPath deploy.zip -Force
-    aws amplify start-deployment --app-id d30vctrrd6dday --branch-name dev --source-url deploy.zip
-    ```
-    *Note: The CLI deployment is more complex for beginners. The GitHub method is highly recommended.*
-
----
-
-### How to Fix the "Welcome" Screen
-
-If you still see the "Welcome" screen after a successful deploy:
-1.  **Build Phase Check**: In the Amplify Console, click on your `dev` branch. Look at the **"Build"** log. If it says "Succeeded" but the site is blank, check the "Artifacts" tab to ensure `index.html` and `index.js` are listed.
-2.  **Environment Variables**:
-    - Go to **App Settings** > **Environment variables**.
-    - Add a variable with Key: `AWS_API_URL` and Value: `(Your API Gateway URL)`.
-    - You **must** trigger a new build for this variable to take effect.
-
-### Local Testing
-To see your app before deploying:
+### Option 1: The GitHub "Push" Command (Recommended)
+This is the standard way. Every time you run these, AWS starts a new build automatically.
 ```bash
-npm install
-npm run build
-# Then open index.html in your browser using "Live Server" extension
+git add .
+git commit -m "Update Shamanth Academy"
+git push origin dev
 ```
+
+**If this doesn't trigger a build:**
+1. Go to **AWS Amplify Console**.
+2. Go to **App Settings** > **Webhooks**.
+3. If no webhook exists, go to **Hosting environments** and re-connect your GitHub.
+
+---
+
+### Option 2: The "Force Deploy" Terminal Command
+If GitHub isn't working, you can manually upload your code using the **AWS CLI**. Run this in your VSCode terminal:
+
+**Step A: Zip your code**
+```bash
+# Windows (PowerShell)
+Compress-Archive -Path index.html, index.tsx, package.json, amplify.yml, metadata.json, components, services, constants.tsx, types.ts -DestinationPath site.zip -Force
+```
+
+**Step B: Push to AWS**
+```bash
+# Replace YOUR_APP_ID with d30vctrrd6dday
+aws amplify start-deployment --app-id d30vctrrd6dday --branch-name dev --source-url site.zip
+```
+
+---
+
+### Troubleshooting the "Welcome" Screen
+If you see the AWS Welcome screen even after a "Success" message:
+1. Your `index.html` must be in the **root** folder (it is).
+2. Your `amplify.yml` must list `index.html` in the artifacts (I just updated this for you).
+3. **Check the Build Logs**: In the Amplify Console, click on the "Build" step. If it shows an error in `npm run build`, your `index.js` was never created.
+
+### Environment Variables
+Don't forget to add your `AWS_API_URL` in **App Settings > Environment Variables** in the AWS UI!

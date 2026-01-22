@@ -12,6 +12,8 @@
     "typescript": "^5.0.0"
   },
   "scripts": {
-    "build": "esbuild index.tsx --bundle --outfile=index.js --format=esm --jsx=automatic --minify --external:react --external:react-dom"
+    "build": "esbuild index.tsx --bundle --outfile=index.js --format=esm --jsx=automatic --minify --external:react --external:react-dom",
+    "deploy": "git add . && git commit -m 'Update' && git push origin dev",
+    "zip": "zip -r deploy.zip index.html package.json amplify.yml metadata.json components/ services/ constants.tsx types.ts index.tsx"
   }
 }

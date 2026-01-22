@@ -8,18 +8,18 @@ const USERS_KEY = 'shamanth_academy_users_v1';
  */
 const REMOTE_API_URL = "INSERT_AWS_API_URL_HERE";
 
-// Log connection status on load for developer transparency
-if (!REMOTE_API_URL.includes("INSERT_AWS")) {
-  console.log(`%c Shamanth Academy: Connected to Cloud Backend at ${REMOTE_API_URL} `, 'background: #4338ca; color: #fff; font-weight: bold; padding: 4px;');
-} else {
-  console.log("%c Shamanth Academy: Running in Local Fallback Mode (LocalStorage) ", 'background: #f59e0b; color: #000; font-weight: bold; padding: 4px;');
-}
+// Enhanced logging for deployment debugging
+const logStatus = () => {
+  if (REMOTE_API_URL.includes("INSERT_AWS")) {
+    console.warn("⚠️ Shamanth Academy: No API URL detected. Using LocalStorage fallback.");
+  } else {
+    console.log(`🚀 Shamanth Academy: Cloud Backend connected at ${REMOTE_API_URL}`);
+  }
+};
+logStatus();
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
-/**
- * Standardized fetch wrapper for AWS Lambda via API Gateway
- */
 async function cloudFetch(action: string, body: any = {}) {
   if (!REMOTE_API_URL || REMOTE_API_URL.includes("INSERT_AWS")) {
     return null;
@@ -33,14 +33,12 @@ async function cloudFetch(action: string, body: any = {}) {
     });
     
     if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`AWS API Error: ${response.status} - ${errText}`);
+        throw new Error(`Cloud API Error: ${response.status}`);
     }
     
-    const data = await response.json();
-    return data;
+    return await response.json();
   } catch (error) {
-    console.warn("Cloud Sync Unavailable (using local fallback):", error);
+    console.error("Cloud connection failed:", error);
     return null;
   }
 }

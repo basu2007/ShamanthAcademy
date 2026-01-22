@@ -8,7 +8,7 @@ frontend:
       commands:
         # 1. Inject the API URL into the code from Amplify Environment Variables
         - sed -i "s|INSERT_AWS_API_URL_HERE|$AWS_API_URL|g" services/db.ts
-        # 2. Run the build script defined in package.json
+        # 2. Run the bundle script
         - npm run build
   artifacts:
     baseDirectory: .
@@ -16,8 +16,6 @@ frontend:
       - 'index.html'
       - 'index.js'
       - 'metadata.json'
-      - 'services/**/*'
-      - 'components/**/*'
   cache:
     paths:
       - node_modules/**/*
