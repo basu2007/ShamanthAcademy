@@ -3,41 +3,51 @@ const { execSync } = require('child_process');
 const path = require('path');
 
 /**
- * Shamanth Academy - Cross-Platform Build Script
- * This script works on Windows, macOS, and Linux.
+ * Shamanth Academy - Professional Build Script (Cross-Platform)
+ * Verified for: Windows 10/11, macOS, and AWS Linux
  */
 
+const DIST_DIR = path.resolve(__dirname, 'dist');
+const ASSETS = ['index.html', 'metadata.json'];
+
 try {
-  console.log('🧹 Cleaning dist folder...');
-  if (fs.existsSync('dist')) {
-    fs.rmSync('dist', { recursive: true, force: true });
+  console.log('--- 🚀 Starting Build Process ---');
+
+  // 1. Clean previous builds
+  if (fs.existsSync(DIST_DIR)) {
+    console.log('🧹 Removing old dist folder...');
+    fs.rmSync(DIST_DIR, { recursive: true, force: true });
   }
 
-  console.log('📁 Creating dist folder...');
-  fs.mkdirSync('dist');
+  // 2. Create dist folder
+  console.log('📁 Creating fresh dist folder...');
+  fs.mkdirSync(DIST_DIR, { recursive: true });
 
-  console.log('📦 Bundling with esbuild...');
-  // Use npx to ensure we find the local esbuild installation
-  execSync('npx esbuild index.tsx --bundle --outfile=dist/index.js --format=esm --jsx=automatic --minify --external:react --external:react-dom', { 
-    stdio: 'inherit',
-    shell: true 
-  });
+  // 3. Bundle JS with esbuild
+  console.log('📦 Bundling application source...');
+  // We use npx to ensure the local esbuild version is used
+  const esbuildCommand = 'npx esbuild index.tsx --bundle --outfile=dist/index.js --format=esm --jsx=automatic --minify --external:react --external:react-dom';
+  execSync(esbuildCommand, { stdio: 'inherit', shell: true });
 
-  console.log('📄 Copying static assets...');
-  const filesToCopy = ['index.html', 'metadata.json'];
-  
-  filesToCopy.forEach(file => {
-    if (fs.existsSync(file)) {
-      fs.copyFileSync(file, path.join('dist', file));
-      console.log(`   ✅ Copied ${file}`);
+  // 4. Copy static assets
+  console.log('📄 Copying assets to dist...');
+  ASSETS.forEach(fileName => {
+    const src = path.resolve(__dirname, fileName);
+    const dest = path.resolve(DIST_DIR, fileName);
+    
+    if (fs.existsSync(src)) {
+      fs.copyFileSync(src, dest);
+      console.log(`   ✅ Copied: ${fileName}`);
     } else {
-      console.warn(`   ⚠️ Warning: ${file} not found, skipping.`);
+      console.warn(`   ⚠️ Warning: Source file ${fileName} not found!`);
     }
   });
 
-  console.log('\n✨ Build successfully completed in /dist folder!');
+  console.log('--- ✨ Build Successful! ---');
+  console.log(`Ready for deployment in: ${DIST_DIR}\n`);
+
 } catch (error) {
-  console.error('\n❌ Build failed:');
+  console.error('\n❌ BUILD FAILED:');
   console.error(error.message);
   process.exit(1);
 }

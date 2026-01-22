@@ -1,38 +1,36 @@
-# Shamanth Academy: Deployment Guide
+# Shamanth Academy: Windows Deployment Fix
 
-### 1. Fix the Local CLI Config
-Since we now have a proper `dist` folder, make sure Amplify knows where it is:
+If you are seeing `'cp' is not recognized`, it means your local Amplify configuration is stuck on an old command. Follow these exact steps:
 
+### 1. Force Reset Amplify Config
+Run this command in your VSCode terminal:
 ```bash
 amplify configure project
 ```
-*When prompted:*
-- **Distribution Directory Path**: Type `dist` and press Enter.
-- **Build Command**: `node build.js`
-- **Start Command**: `npm run start` (or leave default)
+
+**During the prompts, you MUST type exactly these values:**
+1. **Build Command**: `node build.js`
+2. **Start Command**: `npm run start`
+3. **Distribution Directory Path**: `dist`
 
 ---
 
-### 2. Run Publish
-Now that we have replaced Linux commands (`rm`/`cp`) with a cross-platform Node script (`build.js`), this command will work on Windows:
+### 2. Verify the Build Script
+Run this command to make sure the Windows-friendly script works:
+```bash
+npm run build
+```
+You should see output starting with `--- 🚀 Starting Build Process ---`. If you see `rm` or `cp` errors here, check that your `package.json` file was saved correctly.
 
+---
+
+### 3. Final Publish
+Now run:
 ```bash
 amplify publish
 ```
 
 ---
 
-### 3. Using GitHub (Better for Teams)
-If you prefer pushing to GitHub and letting the cloud do the building:
-
-```bash
-git add .
-git commit -m "Switch to cross-platform build script"
-git push origin dev
-```
-
-### 4. Troubleshooting
-If you see the "Welcome" screen after publishing:
-1. Go to the **Amplify Console** UI.
-2. Check the **Rewrites and redirects** section.
-3. Ensure there is a rule: `</^[^.]+$|\.(?!(css|gif|ico|jpg|js|png|txt|svg|woff|woff2|ttf|map|json)$)([^.]+$)/>` directed to `/index.html` (Type: 200 Rewrite).
+### 4. Why this works
+Windows doesn't have `cp` or `rm`. The `build.js` file uses Node.js "built-in" functions that work on all operating systems. By setting the Amplify build command to `node build.js`, we bypass the Windows command prompt limitations entirely.
