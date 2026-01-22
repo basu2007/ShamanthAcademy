@@ -1,0 +1,14 @@
+
+version: 1
+frontend:
+  phases:
+    build:
+      commands:
+        # No build step required for ESM/Importmap projects
+        - echo "Direct ESM deployment starting..."
+  artifacts:
+    baseDirectory: .
+    files:
+      - '**/*'
+  cache:
+    paths: []
