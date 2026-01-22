@@ -104,6 +104,7 @@ const App: React.FC = () => {
           setCurrentView('home');
           window.scrollTo({ top: 0, behavior: 'smooth' });
         }}
+        onNavigate={navigateToInfo}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
       />

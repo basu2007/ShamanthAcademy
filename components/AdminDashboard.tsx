@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { User, Course } from '../types';
 import * as db from '../services/db';
@@ -6,9 +5,13 @@ import { MOCK_COURSES } from '../constants';
 
 const AdminDashboard: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
-  const [activeTab, setActiveTab] = useState<'pending' | 'seekers' | 'insights'>('pending');
+  const [activeTab, setActiveTab] = useState<'pending' | 'seekers' | 'insights' | 'reports'>('pending');
   const [searchQuery, setSearchQuery] = useState('');
   const [grantingForUser, setGrantingForUser] = useState<string | null>(null);
+  
+  // For reports tab
+  const [reports, setReports] = useState<string[]>([]);
+  const [isLoadingReports, setIsLoadingReports] = useState(false);
 
   useEffect(() => {
     refreshData();
@@ -39,6 +42,35 @@ const AdminDashboard: React.FC = () => {
     await refreshData();
   };
 
+  // Logic to simulate listing of reports in dist/reports
+  const fetchReports = async () => {
+    setIsLoadingReports(true);
+    // In a real environment, you'd fetch this from a server endpoint
+    // Here we simulate finding the files that our build.js copies
+    try {
+      // We check if we can list the directory contents (simulated)
+      // Since this is frontend-only for now, we'll look for reports that might have been deployed
+      const response = await fetch('/reports/manifest.json').catch(() => null);
+      if (response && response.ok) {
+        const list = await response.json();
+        setReports(list);
+      } else {
+        // Fallback or empty state
+        setReports([]);
+      }
+    } catch (e) {
+      setReports([]);
+    } finally {
+      setIsLoadingReports(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === 'reports') {
+      fetchReports();
+    }
+  }, [activeTab]);
+
   const pendingRequests = users.flatMap(user => 
     user.pendingUnlocks.map(courseId => ({
       userId: user.id,
@@ -66,67 +98,75 @@ const AdminDashboard: React.FC = () => {
     <div className="max-w-7xl mx-auto animate-in fade-in duration-500 pb-20">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-10">
         <div>
-          <span className="text-indigo-600 font-black tracking-widest uppercase text-xs mb-2 block">Central Command</span>
-          <h1 className="text-4xl font-black text-gray-900 tracking-tight leading-none">Dharma Registry</h1>
-          <p className="text-gray-500 font-medium mt-2">Monitoring seeker progress and knowledge gates.</p>
+          <span className="text-indigo-600 font-black tracking-widest uppercase text-xs mb-2 block">Management Console</span>
+          <h1 className="text-3xl sm:text-4xl font-black text-gray-900 tracking-tight leading-none">Administration</h1>
+          <p className="text-gray-500 font-medium mt-2">Oversee student enrollment and system health.</p>
         </div>
         
-        <div className="flex flex-wrap bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100">
+        <div className="flex flex-wrap bg-white p-1.5 rounded-2xl shadow-sm border border-gray-100 overflow-x-auto">
           <button 
             onClick={() => setActiveTab('pending')}
-            className={`px-5 py-2.5 rounded-xl font-bold transition-all text-xs uppercase tracking-wider flex items-center gap-2 ${
-              activeTab === 'pending' ? 'bg-indigo-700 text-white shadow-lg shadow-indigo-200' : 'text-gray-400 hover:text-gray-600'
+            className={`px-4 py-2 rounded-xl font-bold transition-all text-[10px] uppercase tracking-wider flex items-center gap-2 flex-shrink-0 ${
+              activeTab === 'pending' ? 'bg-indigo-700 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'
             }`}
           >
-            Requests {pendingRequests.length > 0 && <span className="bg-red-500 text-white w-5 h-5 rounded-full flex items-center justify-center text-[10px]">{pendingRequests.length}</span>}
+            Unlocks {pendingRequests.length > 0 && <span className="bg-red-500 text-white w-4 h-4 rounded-full flex items-center justify-center text-[8px]">{pendingRequests.length}</span>}
           </button>
           <button 
             onClick={() => setActiveTab('seekers')}
-            className={`px-5 py-2.5 rounded-xl font-bold transition-all text-xs uppercase tracking-wider ${
-              activeTab === 'seekers' ? 'bg-indigo-700 text-white shadow-lg shadow-indigo-200' : 'text-gray-400 hover:text-gray-600'
+            className={`px-4 py-2 rounded-xl font-bold transition-all text-[10px] uppercase tracking-wider flex-shrink-0 ${
+              activeTab === 'seekers' ? 'bg-indigo-700 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'
             }`}
           >
-            Seeker Cards
+            Users
           </button>
           <button 
             onClick={() => setActiveTab('insights')}
-            className={`px-5 py-2.5 rounded-xl font-bold transition-all text-xs uppercase tracking-wider ${
-              activeTab === 'insights' ? 'bg-indigo-700 text-white shadow-lg shadow-indigo-200' : 'text-gray-400 hover:text-gray-600'
+            className={`px-4 py-2 rounded-xl font-bold transition-all text-[10px] uppercase tracking-wider flex-shrink-0 ${
+              activeTab === 'insights' ? 'bg-indigo-700 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'
             }`}
           >
-            Live Insights
+            Live Monitor
+          </button>
+          <button 
+            onClick={() => setActiveTab('reports')}
+            className={`px-4 py-2 rounded-xl font-bold transition-all text-[10px] uppercase tracking-wider flex-shrink-0 ${
+              activeTab === 'reports' ? 'bg-indigo-700 text-white shadow-lg' : 'text-gray-400 hover:text-gray-600'
+            }`}
+          >
+            <i className="fa-solid fa-file-zipper mr-1"></i> Reports
           </button>
         </div>
       </div>
 
       {activeTab === 'pending' && (
-        <div className="bg-white rounded-[2rem] shadow-xl shadow-indigo-50 border border-gray-100 overflow-hidden">
+        <div className="bg-white rounded-[1.5rem] sm:rounded-[2rem] shadow-xl shadow-indigo-50 border border-gray-100 overflow-hidden">
           {pendingRequests.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-left">
                 <thead className="bg-gray-50/50 border-b border-gray-100">
                   <tr>
-                    <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Seeker</th>
-                    <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Course Requested</th>
-                    <th className="px-8 py-5 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-right">Action</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Seeker</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Course</th>
+                    <th className="px-6 py-4 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-right">Action</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-50">
                   {pendingRequests.map((req, idx) => (
                     <tr key={`${req.userId}-${req.courseId}-${idx}`} className="hover:bg-indigo-50/30 transition-colors">
-                      <td className="px-8 py-6">
-                        <div className="font-bold text-gray-900">{req.userEmail}</div>
-                        <div className="text-[10px] text-indigo-400 font-black tracking-widest uppercase mt-0.5">ID: {req.userId}</div>
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-gray-900 text-sm">{req.userEmail}</div>
+                        <div className="text-[9px] text-indigo-400 font-black tracking-widest uppercase">ID: {req.userId}</div>
                       </td>
-                      <td className="px-8 py-6">
-                        <div className="font-bold text-indigo-700">{req.courseTitle}</div>
+                      <td className="px-6 py-4">
+                        <div className="font-bold text-indigo-700 text-sm">{req.courseTitle}</div>
                       </td>
-                      <td className="px-8 py-6 text-right">
+                      <td className="px-6 py-4 text-right">
                         <button 
                           onClick={() => handleApprove(req.userId, req.courseId)}
-                          className="bg-green-600 hover:bg-green-700 text-white px-6 py-2.5 rounded-xl text-sm font-black shadow-lg shadow-green-100 transition-all transform active:scale-95"
+                          className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl text-xs font-black shadow-lg transition-all"
                         >
-                          Approve Unlock
+                          Approve
                         </button>
                       </td>
                     </tr>
@@ -135,12 +175,12 @@ const AdminDashboard: React.FC = () => {
               </table>
             </div>
           ) : (
-            <div className="p-32 text-center">
-               <div className="w-24 h-24 bg-gray-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6 border-2 border-dashed border-gray-200">
-                  <i className="fa-solid fa-bell-slash text-3xl text-gray-200"></i>
+            <div className="p-20 sm:p-32 text-center">
+               <div className="w-20 h-20 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-6 border-2 border-dashed border-gray-200">
+                  <i className="fa-solid fa-check text-3xl text-gray-200"></i>
                </div>
-               <h3 className="text-2xl font-black text-gray-900">Quiet Ashram</h3>
-               <p className="text-gray-500 max-w-xs mx-auto mt-2">No pending course unlock requests at this time.</p>
+               <h3 className="text-xl font-black text-gray-900">All Clear</h3>
+               <p className="text-gray-500 max-w-xs mx-auto mt-2 text-sm">No pending enrollment requests.</p>
             </div>
           )}
         </div>
@@ -155,21 +195,20 @@ const AdminDashboard: React.FC = () => {
               placeholder="Search by email..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-white border border-gray-200 rounded-2xl py-3.5 pl-12 pr-4 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all shadow-sm"
+              className="w-full bg-white border border-gray-200 rounded-2xl py-3 pl-12 pr-4 focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 outline-none transition-all shadow-sm"
             />
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredUsers.map(user => (
-              <div key={user.id} className="bg-white p-8 rounded-[2rem] border border-gray-100 shadow-xl shadow-indigo-50 hover:shadow-indigo-100 transition-all group relative overflow-hidden">
-                {user.role === 'ADMIN' && <div className="absolute top-0 right-0 p-4 opacity-5"><i className="fa-solid fa-shield-halved text-6xl"></i></div>}
-                <div className="flex items-center justify-between mb-8">
+              <div key={user.id} className="bg-white p-6 rounded-[2rem] border border-gray-100 shadow-xl shadow-indigo-50 hover:shadow-indigo-100 transition-all group relative overflow-hidden">
+                <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 rounded-2xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-black text-xl shadow-inner border border-indigo-100">
+                    <div className="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-700 flex items-center justify-center font-black text-lg">
                       {user.email.charAt(0).toUpperCase()}
                     </div>
                     <div>
-                      <h3 className="font-black text-gray-900 leading-tight truncate max-w-[150px]">{user.email}</h3>
-                      <span className={`text-[9px] px-2 py-0.5 rounded-lg font-black uppercase tracking-widest mt-1 inline-block ${
+                      <h3 className="font-black text-gray-900 leading-tight truncate max-w-[120px]">{user.email}</h3>
+                      <span className={`text-[8px] px-2 py-0.5 rounded-lg font-black uppercase tracking-widest mt-1 inline-block ${
                         user.role === 'ADMIN' ? 'bg-amber-100 text-amber-700' : 'bg-indigo-100 text-indigo-600'
                       }`}>
                         {user.role}
@@ -179,7 +218,7 @@ const AdminDashboard: React.FC = () => {
                   {user.role !== 'ADMIN' && (
                     <button 
                       onClick={() => setGrantingForUser(grantingForUser === user.id ? null : user.id)}
-                      className="w-10 h-10 rounded-xl bg-gray-50 text-gray-400 hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center shadow-sm"
+                      className="w-9 h-9 rounded-xl bg-gray-50 text-gray-400 hover:bg-indigo-600 hover:text-white transition-all flex items-center justify-center shadow-sm"
                     >
                       <i className={`fa-solid ${grantingForUser === user.id ? 'fa-xmark' : 'fa-plus'}`}></i>
                     </button>
@@ -187,45 +226,45 @@ const AdminDashboard: React.FC = () => {
                 </div>
                 
                 {grantingForUser === user.id && (
-                  <div className="mb-8 p-6 bg-indigo-50 rounded-2xl border border-indigo-100 animate-in zoom-in duration-300">
-                    <div className="text-[9px] font-black text-indigo-400 uppercase tracking-widest mb-4">Grant Access Manually</div>
+                  <div className="mb-6 p-4 bg-indigo-50 rounded-2xl border border-indigo-100 animate-in zoom-in duration-300">
+                    <div className="text-[8px] font-black text-indigo-400 uppercase tracking-widest mb-3">Manually Unlock</div>
                     <div className="space-y-2">
                       {MOCK_COURSES.filter(c => !user.enrolledCourses.includes(c.id)).map(course => (
                         <button
                           key={course.id}
                           onClick={() => handleGrantAccess(user.id, course.id)}
-                          className="w-full text-left px-4 py-3 bg-white rounded-xl text-xs font-bold text-gray-700 hover:bg-indigo-600 hover:text-white transition-all shadow-sm border border-indigo-100 flex justify-between items-center group/btn"
+                          className="w-full text-left px-3 py-2 bg-white rounded-lg text-[10px] font-bold text-gray-700 hover:bg-indigo-600 hover:text-white transition-all shadow-sm flex justify-between items-center"
                         >
                           {course.title}
-                          <i className="fa-solid fa-arrow-right opacity-0 group-hover/btn:opacity-100"></i>
+                          <i className="fa-solid fa-plus text-[8px]"></i>
                         </button>
                       ))}
                     </div>
                   </div>
                 )}
 
-                <div className="space-y-4">
-                  <div className="flex justify-between items-center text-[9px] font-black text-gray-400 uppercase tracking-widest">
-                    <span>Unlocked ({user.enrolledCourses.length})</span>
-                    <span className="text-indigo-400">Seen: {formatLastSeen(user.lastActive)}</span>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center text-[8px] font-black text-gray-400 uppercase tracking-widest">
+                    <span>Enrolled ({user.enrolledCourses.length})</span>
+                    <span className="text-indigo-400">{formatLastSeen(user.lastActive)}</span>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {user.enrolledCourses.length > 0 ? (
                       user.enrolledCourses.map(id => {
                         const course = MOCK_COURSES.find(c => c.id === id);
                         return (
-                          <div key={id} className="group/tag flex items-center gap-2 text-[10px] bg-green-50 text-green-700 border border-green-100 pl-2.5 pr-1.5 py-1.5 rounded-lg font-black transition-all hover:bg-red-50 hover:text-red-700 hover:border-red-100">
+                          <div key={id} className="group/tag flex items-center gap-2 text-[9px] bg-green-50 text-green-700 border border-green-100 pl-2 pr-1 py-1 rounded font-black">
                             {course?.title || 'Unknown'}
                             {user.role !== 'ADMIN' && (
-                              <button onClick={() => handleLock(user.id, id)} className="w-4 h-4 rounded bg-green-200/50 hover:bg-red-600 hover:text-white flex items-center justify-center">
-                                <i className="fa-solid fa-lock text-[7px]"></i>
+                              <button onClick={() => handleLock(user.id, id)} className="w-3.5 h-3.5 rounded bg-green-200/50 hover:bg-red-600 hover:text-white flex items-center justify-center">
+                                <i className="fa-solid fa-xmark text-[6px]"></i>
                               </button>
                             )}
                           </div>
                         );
                       })
                     ) : (
-                      <div className="py-4 text-center w-full bg-gray-50 rounded-xl border-2 border-dashed border-gray-100 text-[10px] text-gray-400 font-bold">No premium content.</div>
+                      <div className="py-2 text-center w-full text-[9px] text-gray-300 italic">No courses unlocked.</div>
                     )}
                   </div>
                 </div>
@@ -236,22 +275,22 @@ const AdminDashboard: React.FC = () => {
       )}
 
       {activeTab === 'insights' && (
-        <div className="bg-white rounded-[2.5rem] shadow-xl shadow-indigo-50 border border-gray-100 overflow-hidden">
-          <div className="p-10 border-b border-gray-50 flex justify-between items-center">
+        <div className="bg-white rounded-[2rem] shadow-xl shadow-indigo-50 border border-gray-100 overflow-hidden">
+          <div className="p-8 border-b border-gray-50 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
              <div>
-                <h3 className="text-xl font-black text-gray-900">Live Activity Monitor</h3>
-                <p className="text-sm text-gray-500 font-medium">Tracking seeker presence in the digital ashram.</p>
+                <h3 className="text-xl font-black text-gray-900">Live Traffic</h3>
+                <p className="text-xs text-gray-500 font-medium">Monitoring active learning sessions.</p>
              </div>
-             <div className="flex gap-10">
+             <div className="flex gap-8">
                 <div className="text-center">
-                   <div className="text-2xl font-black text-indigo-600">{users.length}</div>
-                   <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Total Seekers</div>
+                   <div className="text-xl font-black text-indigo-600">{users.length}</div>
+                   <div className="text-[8px] text-gray-400 font-black uppercase tracking-widest">Students</div>
                 </div>
                 <div className="text-center">
-                   <div className="text-2xl font-black text-green-500">
+                   <div className="text-xl font-black text-green-500">
                       {users.filter(u => u.lastActive && (new Date().getTime() - new Date(u.lastActive).getTime() < 300000)).length}
                    </div>
-                   <div className="text-[10px] text-gray-400 font-black uppercase tracking-widest">Active (5m)</div>
+                   <div className="text-[8px] text-gray-400 font-black uppercase tracking-widest">Online (5m)</div>
                 </div>
              </div>
           </div>
@@ -259,10 +298,9 @@ const AdminDashboard: React.FC = () => {
             <table className="w-full text-left">
               <thead className="bg-gray-50/50">
                 <tr>
-                  <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Seeker Status</th>
-                  <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Last Active</th>
-                  <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em]">Knowledge Depth</th>
-                  <th className="px-10 py-6 text-[10px] font-black text-gray-400 uppercase tracking-[0.2em] text-right">Role</th>
+                  <th className="px-8 py-4 text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">Student</th>
+                  <th className="px-8 py-4 text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">Last Active</th>
+                  <th className="px-8 py-4 text-[9px] font-black text-gray-400 uppercase tracking-[0.2em]">Access Level</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-50">
@@ -270,32 +308,18 @@ const AdminDashboard: React.FC = () => {
                   const isOnline = user.lastActive && (new Date().getTime() - new Date(user.lastActive).getTime() < 600000);
                   return (
                     <tr key={user.id} className="hover:bg-indigo-50/20 transition-all">
-                      <td className="px-10 py-6">
-                        <div className="flex items-center gap-4">
-                          <div className={`w-3 h-3 rounded-full shadow-lg ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-200'}`}></div>
-                          <div>
-                            <div className="font-bold text-gray-900">{user.email}</div>
-                            <div className="text-[10px] text-gray-400 font-medium">Session ID: {user.id}</div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-10 py-6">
-                        <span className="text-sm font-bold text-gray-600">{formatLastSeen(user.lastActive)}</span>
-                      </td>
-                      <td className="px-10 py-6">
+                      <td className="px-8 py-4">
                         <div className="flex items-center gap-3">
-                           <div className="w-32 bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                              <div 
-                                className="bg-indigo-600 h-full transition-all duration-1000" 
-                                style={{ width: `${Math.min((user.enrolledCourses.length / MOCK_COURSES.length) * 100, 100)}%` }}
-                              ></div>
-                           </div>
-                           <span className="text-xs font-black text-indigo-700">{user.enrolledCourses.length} paths</span>
+                          <div className={`w-2 h-2 rounded-full ${isOnline ? 'bg-green-500 animate-pulse' : 'bg-gray-200'}`}></div>
+                          <div className="text-sm font-bold text-gray-900">{user.email}</div>
                         </div>
                       </td>
-                      <td className="px-10 py-6 text-right">
-                         <span className={`text-[10px] px-2.5 py-1 rounded-full font-black uppercase tracking-widest ${
-                           user.role === 'ADMIN' ? 'bg-amber-600 text-white' : 'bg-gray-100 text-gray-500'
+                      <td className="px-8 py-4">
+                        <span className="text-xs font-bold text-gray-600">{formatLastSeen(user.lastActive)}</span>
+                      </td>
+                      <td className="px-8 py-4">
+                         <span className={`text-[8px] px-2 py-0.5 rounded-full font-black uppercase tracking-widest ${
+                           user.role === 'ADMIN' ? 'bg-amber-500 text-white' : 'bg-gray-100 text-gray-500'
                          }`}>
                            {user.role}
                          </span>
@@ -305,6 +329,71 @@ const AdminDashboard: React.FC = () => {
                 })}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'reports' && (
+        <div className="bg-white rounded-[2rem] shadow-xl shadow-indigo-50 border border-gray-100 overflow-hidden">
+          <div className="p-8 border-b border-gray-50 flex items-center justify-between">
+            <div>
+              <h3 className="text-xl font-black text-gray-900">System Reports</h3>
+              <p className="text-xs text-gray-500 font-medium">Download automatically collected .zip artifacts.</p>
+            </div>
+            <button 
+              onClick={fetchReports} 
+              className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+            >
+              <i className={`fa-solid fa-arrows-rotate ${isLoadingReports ? 'animate-spin' : ''}`}></i>
+            </button>
+          </div>
+          
+          <div className="p-8">
+            {reports.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {reports.map((report, idx) => (
+                  <div key={idx} className="flex items-center justify-between p-4 bg-gray-50 border border-gray-100 rounded-2xl hover:border-indigo-300 transition-all group">
+                    <div className="flex items-center gap-4">
+                      <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center text-lg">
+                        <i className="fa-solid fa-file-zipper"></i>
+                      </div>
+                      <div>
+                        <div className="text-sm font-bold text-gray-800 line-clamp-1">{report}</div>
+                        <div className="text-[10px] text-gray-400">Generated Artifact</div>
+                      </div>
+                    </div>
+                    <a 
+                      href={`/reports/${report}`} 
+                      download 
+                      className="w-10 h-10 bg-white border border-gray-100 text-gray-400 hover:text-indigo-600 hover:border-indigo-200 rounded-xl flex items-center justify-center transition-all shadow-sm"
+                    >
+                      <i className="fa-solid fa-download"></i>
+                    </a>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-20">
+                <div className="w-16 h-16 bg-gray-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-gray-200">
+                  <i className="fa-solid fa-folder-open text-3xl"></i>
+                </div>
+                <p className="text-gray-400 text-sm font-medium">No reports found in /dist/reports.</p>
+                <p className="text-[10px] text-gray-300 mt-2">Ensure your local build script is collecting reports from your Windows Temp directory.</p>
+              </div>
+            )}
+          </div>
+
+          <div className="bg-amber-50 p-6 m-8 rounded-2xl border border-amber-100">
+             <div className="flex gap-4 items-start">
+                <i className="fa-solid fa-circle-info text-amber-500 mt-1"></i>
+                <div>
+                   <h4 className="font-bold text-amber-900 text-sm mb-1">Troubleshooting "Missing Reports"</h4>
+                   <p className="text-amber-800 text-xs leading-relaxed">
+                     Our build script now automatically looks for files in <code>%LOCALAPPDATA%\Temp\ShamanthAcademy</code>. 
+                     If you don't see your reports here after <code>amplify publish</code>, make sure the reports are saved in that specific folder before running the build command.
+                   </p>
+                </div>
+             </div>
           </div>
         </div>
       )}

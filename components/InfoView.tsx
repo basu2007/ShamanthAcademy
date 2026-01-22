@@ -1,10 +1,9 @@
-
 import React from 'react';
 
 export type InfoTopic = 
   | 'vedic-math' | 'react-flux' | 'aws-dharma' | 'ds-guru'
   | 'mission' | 'support' | 'privacy' | 'terms'
-  | 'ashram' | 'contact';
+  | 'ashram' | 'contact' | 'course-schedule' | 'new-batches';
 
 interface InfoViewProps {
   topic: InfoTopic;
@@ -25,6 +24,85 @@ const GOOGLE_MAP_IFRAME = (
 );
 
 const CONTENT_MAP: Record<InfoTopic, { title: string; icon: string; body: React.ReactNode }> = {
+  'course-schedule': {
+    title: 'Upcoming Course Schedules',
+    icon: 'fa-calendar-days',
+    body: (
+      <div className="space-y-8">
+        <p className="text-gray-600">Plan your learning journey with our upcoming live sessions. All times are in IST (Indian Standard Time).</p>
+        <div className="overflow-x-auto rounded-2xl border border-gray-100 shadow-sm">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-indigo-900 text-white">
+              <tr>
+                <th className="px-6 py-4 font-bold uppercase tracking-wider">Course Name</th>
+                <th className="px-6 py-4 font-bold uppercase tracking-wider">Start Date</th>
+                <th className="px-6 py-4 font-bold uppercase tracking-wider">Timing</th>
+                <th className="px-6 py-4 font-bold uppercase tracking-wider">Mode</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100 bg-white">
+              {[
+                { name: 'Java Full Stack Development', date: 'July 25, 2024', time: '07:30 AM - 09:00 AM', mode: 'Online/Offline' },
+                { name: 'React 19 & Next.js Mastery', date: 'July 28, 2024', time: '06:00 PM - 07:30 PM', mode: 'Online' },
+                { name: 'Python for Data Science', date: 'August 02, 2024', time: '08:00 PM - 10:00 PM', mode: 'Online' },
+                { name: 'AWS Cloud Solutions Architect', date: 'August 05, 2024', time: '07:00 AM - 08:30 AM', mode: 'Offline' },
+                { name: 'Spring Boot & Microservices', date: 'August 10, 2024', time: '09:00 AM - 11:00 AM', mode: 'Online/Offline' },
+              ].map((row, i) => (
+                <tr key={i} className="hover:bg-indigo-50/50 transition-colors">
+                  <td className="px-6 py-4 font-bold text-gray-900">{row.name}</td>
+                  <td className="px-6 py-4 text-gray-600">{row.date}</td>
+                  <td className="px-6 py-4 text-indigo-600 font-semibold">{row.time}</td>
+                  <td className="px-6 py-4">
+                    <span className={`px-2 py-1 rounded-md text-[10px] font-black uppercase tracking-widest ${row.mode.includes('Offline') ? 'bg-amber-100 text-amber-700' : 'bg-blue-100 text-blue-700'}`}>
+                      {row.mode}
+                    </span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+        <div className="bg-amber-50 p-6 rounded-2xl border border-amber-100 flex gap-4">
+           <i className="fa-solid fa-circle-info text-amber-500 mt-1"></i>
+           <p className="text-xs text-amber-800 leading-relaxed">
+             Schedules are subject to change. Registered students will receive updates via email and the SA mobile app dashboard. Offline batches are conducted at our Mathikere Hub.
+           </p>
+        </div>
+      </div>
+    )
+  },
+  'new-batches': {
+    title: 'New & Upcoming Batches',
+    icon: 'fa-layer-group',
+    body: (
+      <div className="space-y-8">
+        <p className="text-gray-600">Join our latest cohorts. Early enrollment often includes exclusive project workshops and bonus curriculum material.</p>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+          {[
+            { title: 'Core Java & Advanced Java', status: 'Registration Open', price: 'Special Offer', color: 'indigo' },
+            { title: 'DevOps & Kubernetes Guru', status: 'Few Seats Left', price: 'Discount Applied', color: 'rose' },
+            { title: 'Machine Learning Masterclass', status: 'Starting Soon', price: 'Early Bird', color: 'emerald' },
+            { title: 'UI/UX Design for Devs', status: 'Registration Open', price: 'Limited Seats', color: 'amber' },
+          ].map((batch, i) => (
+            <div key={i} className="bg-white p-6 rounded-3xl border border-gray-100 shadow-xl shadow-indigo-50 relative overflow-hidden group">
+              <div className={`absolute top-0 right-0 w-24 h-24 bg-${batch.color}-500 opacity-5 rounded-bl-full group-hover:scale-110 transition-transform`}></div>
+              <div className="flex justify-between items-start mb-4">
+                <span className={`text-[9px] font-black uppercase tracking-[0.2em] px-2 py-1 rounded bg-${batch.color}-100 text-${batch.color}-700`}>
+                  {batch.status}
+                </span>
+                <span className="text-amber-500 font-black text-[10px] uppercase">{batch.price}</span>
+              </div>
+              <h3 className="text-xl font-black text-gray-900 mb-2 leading-tight">{batch.title}</h3>
+              <p className="text-xs text-gray-500 mb-6">Complete end-to-end curriculum with real-world capstone projects.</p>
+              <button className="w-full py-3 bg-gray-900 text-white rounded-xl font-bold text-xs hover:bg-indigo-700 transition-all shadow-lg shadow-gray-200">
+                Enroll in Batch
+              </button>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  },
   'vedic-math': {
     title: 'Logical Agility',
     icon: 'fa-calculator',
