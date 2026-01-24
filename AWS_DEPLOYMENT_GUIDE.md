@@ -1,32 +1,42 @@
 # Shamanth Academy: Deployment Fixes
 
-If you see `× Zipping artifacts failed`, it means the Amplify CLI is looking for your build in the wrong folder (likely `build` instead of `dist`).
+If you see `× Zipping artifacts failed`, follow these steps to force Amplify to use the correct settings.
 
-### 1. Fix Distribution Directory
-Run this command to tell Amplify to look in the `dist` folder:
+### 1. Fix Configuration (Command Line)
+Run this command in your terminal:
 ```bash
 amplify configure project
 ```
-**Follow these prompts exactly:**
+**Respond to the prompts as follows:**
 - **Build Command**: `node build.js`
-- **Start Command**: `npm run start` (or leave default)
-- **Distribution Directory Path**: `dist`  <-- THIS MUST BE "dist"
+- **Start Command**: `npm run start`
+- **Distribution Directory Path**: `dist`
 
----
-
-### 2. Verify Local Build
-Test the build locally before publishing. This will also collect your reports:
-```bash
-npm run build
+### 2. Manual Fix (If Step 1 Fails)
+If the command above doesn't work, edit the configuration file directly:
+1. Open the file: `amplify/.config/project-config.json`
+2. Ensure the `javascript` section looks exactly like this:
+```json
+"javascript": {
+  "framework": "none",
+  "config": {
+    "BuildCommand": "node build.js",
+    "StartCommand": "npm run start",
+    "DistributionDir": "dist"
+  }
+}
 ```
-Verify that a `dist` folder appeared in your project root and that it contains `index.html`, `index.js`, and a `reports` folder.
 
----
-
-### 3. Deploy
+### 3. Clear Cache & Rebuild
+Run these commands to ensure a clean state:
 ```bash
+# Delete existing dist
+rmdir /s /q dist 
+# Run the custom build
+npm run build
+# Publish to AWS
 amplify publish
 ```
 
-### 4. Why you see "Vite" errors
-If your terminal shows `vite v5.4.21`, you are running a Vite-based project instead of the custom `build.js`. To ensure my "Report Collector" works, make sure your `package.json` matches the one provided in this app.
+### 4. About the Network Timeout
+The `connect ETIMEDOUT` error happens because your network (or a VPN/Firewall) is blocking `github.com` IPs used by Amplify to send debug reports. This **does not** stop your app from deploying; it only stops the error report from being sent. Focus on fixing the "Zipping" error above first.

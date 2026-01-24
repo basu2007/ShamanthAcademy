@@ -3,33 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Shamanth Academy - Excellence in Technical Learning</title>
+    <title>Shamanth Academy - Professional Technical Learning</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-        .bg-shamanth-gradient {
-            background: linear-gradient(135deg, #4338ca 0%, #1e1b4b 100%);
-        }
-        /* Custom scrollbar for better UX */
-        .custom-scrollbar::-webkit-scrollbar {
-            width: 6px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-track {
-            background: #f1f1f1;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb {
-            background: #e2e8f0;
-            border-radius: 10px;
-        }
-        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
-            background: #cbd5e1;
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
+        body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        .loading-screen {
+            position: fixed; inset: 0; background: #ffffff;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 9999; transition: opacity 0.5s;
         }
     </style>
-<script type="importmap">
+    
+    <!-- Stable Import Map -->
+    <script type="importmap">
 {
   "imports": {
     "react": "https://esm.sh/react@19.0.0",
@@ -42,10 +30,20 @@
 }
 </script>
 </head>
-<body class="bg-gray-50 text-gray-900">
+<body class="bg-slate-50 text-gray-900">
+    <div id="loading-overlay" class="loading-screen">
+        <div class="relative mb-6">
+            <div class="w-16 h-16 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin"></div>
+            <div class="absolute inset-0 flex items-center justify-center">
+                <div class="w-8 h-8 bg-indigo-600 rounded-lg transform rotate-45 animate-pulse"></div>
+            </div>
+        </div>
+        <h2 class="text-indigo-900 font-black text-xl tracking-tighter">SHAMANTH ACADEMY</h2>
+        <p id="loading-status" class="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-4">Securing environment...</p>
+    </div>
+
     <div id="root"></div>
-    <!-- Pointing to index.tsx allows the local preview to work. 
-         The build script will automatically change this to index.js for production. -->
+
     <script type="module" src="index.tsx"></script>
 </body>
 </html>

@@ -2,14 +2,38 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 
-const rootElement = document.getElementById('root');
-if (!rootElement) {
-  throw new Error("Could not find root element to mount to");
-}
+console.log("🚀 [System] Shamanth Academy: Core Initialized.");
 
-const root = ReactDOM.createRoot(rootElement);
-root.render(
-  <React.StrictMode>
-    <App />
-  </React.StrictMode>
-);
+const rootElement = document.getElementById('root');
+
+if (rootElement) {
+  try {
+    const root = ReactDOM.createRoot(rootElement);
+    root.render(
+      <React.StrictMode>
+        <App />
+      </React.StrictMode>
+    );
+
+    // Efficiently remove loading screen
+    const clearOverlay = () => {
+      const overlay = document.getElementById('loading-overlay');
+      if (overlay) {
+        overlay.style.opacity = '0';
+        setTimeout(() => overlay.remove(), 500);
+      }
+    };
+
+    if (document.readyState === 'complete') {
+      clearOverlay();
+    } else {
+      window.addEventListener('load', clearOverlay);
+    }
+    
+    console.log("✅ [System] Academy Interface Ready.");
+  } catch (err) {
+    console.error("❌ [System] React Mount Failure:", err);
+  }
+} else {
+  console.error("❌ [System] Critical: Root target #root not found.");
+}

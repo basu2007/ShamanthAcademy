@@ -6,9 +6,13 @@ frontend:
         - npm install
     build:
       commands:
-        # 1. Inject the API URL
-        - sed -i "s|INSERT_AWS_API_URL_HERE|$AWS_API_URL|g" services/db.ts
-        # 2. Run the new build script that creates the 'dist' folder
+        # Prevent failure if AWS_API_URL is not yet defined in the console
+        - |
+          if [ ! -z "$AWS_API_URL" ]; then
+            sed -i "s|INSERT_AWS_API_URL_HERE|$AWS_API_URL|g" services/db.ts
+          else
+            echo "⚠️ Warning: AWS_API_URL not found. Fallback to local storage."
+          fi
         - npm run build
   artifacts:
     baseDirectory: dist
