@@ -1,36 +1,32 @@
-# Shamanth Academy: Windows Deployment Fix
+# Shamanth Academy: Deployment Fixes
 
-If you are seeing `'cp' is not recognized`, it means your local Amplify configuration is stuck on an old command. Follow these exact steps:
+If you see `× Zipping artifacts failed`, it means the Amplify CLI is looking for your build in the wrong folder (likely `build` instead of `dist`).
 
-### 1. Force Reset Amplify Config
-Run this command in your VSCode terminal:
+### 1. Fix Distribution Directory
+Run this command to tell Amplify to look in the `dist` folder:
 ```bash
 amplify configure project
 ```
-
-**During the prompts, you MUST type exactly these values:**
-1. **Build Command**: `node build.js`
-2. **Start Command**: `npm run start`
-3. **Distribution Directory Path**: `dist`
+**Follow these prompts exactly:**
+- **Build Command**: `node build.js`
+- **Start Command**: `npm run start` (or leave default)
+- **Distribution Directory Path**: `dist`  <-- THIS MUST BE "dist"
 
 ---
 
-### 2. Verify the Build Script
-Run this command to make sure the Windows-friendly script works:
+### 2. Verify Local Build
+Test the build locally before publishing. This will also collect your reports:
 ```bash
 npm run build
 ```
-You should see output starting with `--- 🚀 Starting Build Process ---`. If you see `rm` or `cp` errors here, check that your `package.json` file was saved correctly.
+Verify that a `dist` folder appeared in your project root and that it contains `index.html`, `index.js`, and a `reports` folder.
 
 ---
 
-### 3. Final Publish
-Now run:
+### 3. Deploy
 ```bash
 amplify publish
 ```
 
----
-
-### 4. Why this works
-Windows doesn't have `cp` or `rm`. The `build.js` file uses Node.js "built-in" functions that work on all operating systems. By setting the Amplify build command to `node build.js`, we bypass the Windows command prompt limitations entirely.
+### 4. Why you see "Vite" errors
+If your terminal shows `vite v5.4.21`, you are running a Vite-based project instead of the custom `build.js`. To ensure my "Report Collector" works, make sure your `package.json` matches the one provided in this app.
