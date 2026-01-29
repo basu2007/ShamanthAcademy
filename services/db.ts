@@ -5,7 +5,7 @@ const USERS_KEY = 'shamanth_academy_users_v1';
 
 /**
  * During AWS Amplify deployment, the build script replaces this string.
- * Do not manually edit this line unless you are hardcoding your URL.
+ * This is triggered by the BACKEND_API_URL environment variable.
  */
 const REMOTE_API_URL = "INSERT_AWS_API_URL_HERE";
 
