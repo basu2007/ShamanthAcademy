@@ -8,15 +8,46 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap');
-        body { font-family: 'Inter', sans-serif; overflow-x: hidden; }
+        
+        body { 
+          font-family: 'Inter', sans-serif; 
+          overflow-x: hidden; 
+          scroll-behavior: smooth;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+          width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+          background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
+        }
+
         .loading-screen {
             position: fixed; inset: 0; background: #ffffff;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
             z-index: 9999; transition: opacity 0.5s;
         }
+
+        @keyframes marquee {
+          0% { transform: translateX(100%); }
+          100% { transform: translateX(-100%); }
+        }
+        .animate-marquee {
+          animation: marquee 30s linear infinite;
+        }
+        .animate-marquee:hover {
+          animation-play-state: paused;
+        }
     </style>
     
-    <!-- Stable Import Map -->
     <script type="importmap">
 {
   "imports": {
@@ -25,8 +56,8 @@
     "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
     "react/jsx-runtime": "https://esm.sh/react@19.0.0/jsx-runtime",
     "@google/genai": "https://esm.sh/@google/genai",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
-    "react/": "https://esm.sh/react@^19.2.3/"
+    "react-dom/": "https://esm.sh/react-dom@^19.2.4/",
+    "react/": "https://esm.sh/react@^19.2.4/"
   }
 }
 </script>
@@ -39,8 +70,8 @@
                 <div class="w-8 h-8 bg-indigo-600 rounded-lg transform rotate-45 animate-pulse"></div>
             </div>
         </div>
-        <h2 class="text-indigo-900 font-black text-xl tracking-tighter">SHAMANTH ACADEMY</h2>
-        <p id="loading-status" class="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-4">Securing environment...</p>
+        <h2 class="text-indigo-900 font-black text-xl tracking-tighter uppercase">Shamanth Academy</h2>
+        <p class="text-gray-400 text-[10px] font-bold uppercase tracking-widest mt-4">Preparing Learning Environment...</p>
     </div>
 
     <div id="root"></div>

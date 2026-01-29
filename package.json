@@ -14,7 +14,6 @@
   },
   "scripts": {
     "build": "node build.js",
-    "deploy": "git add . && git commit -m 'Update' && git push origin dev",
-    "manual-trigger": "aws amplify start-job --app-id d30vctrrd6dday --branch-name dev --job-type RELEASE"
+    "deploy": "git add . && git commit -m 'Update' && git push origin dev"
   }
 }
