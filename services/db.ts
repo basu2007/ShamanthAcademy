@@ -2,28 +2,32 @@ import { User } from '../types';
 import { ADMIN_CREDENTIALS } from '../constants';
 
 const USERS_KEY = 'shamanth_academy_users_v1';
+
 /**
- * During AWS Amplify deployment, the build script will replace this placeholder 
- * with your actual API Gateway URL via the amplify.yml configuration.
+ * During AWS Amplify deployment, the build script replaces this string.
+ * Do not manually edit this line unless you are hardcoding your URL.
  */
 const REMOTE_API_URL = "INSERT_AWS_API_URL_HERE";
 
-// Enhanced logging for deployment debugging
-const logStatus = () => {
-  if (REMOTE_API_URL.includes("INSERT_AWS")) {
-    console.warn("⚠️ Shamanth Academy: No API URL detected. Using LocalStorage fallback.");
-  } else {
-    console.log(`🚀 Shamanth Academy: Cloud Backend connected at ${REMOTE_API_URL}`);
-  }
+// Check if we are connected to the cloud or using local fallback
+const isCloudConnected = () => {
+  return REMOTE_API_URL && 
+         !REMOTE_API_URL.includes("INSERT_AWS") && 
+         REMOTE_API_URL.startsWith("http");
 };
-logStatus();
+
+if (typeof window !== 'undefined') {
+  if (isCloudConnected()) {
+    console.log(`🌐 [Backend] Cloud synchronized: ${REMOTE_API_URL.substring(0, 15)}...`);
+  } else {
+    console.warn("📁 [Backend] Using LocalStorage mode (Cloud URL not yet injected).");
+  }
+}
 
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 async function cloudFetch(action: string, body: any = {}) {
-  if (!REMOTE_API_URL || REMOTE_API_URL.includes("INSERT_AWS")) {
-    return null;
-  }
+  if (!isCloudConnected()) return null;
   
   try {
     const response = await fetch(REMOTE_API_URL, {
@@ -32,13 +36,10 @@ async function cloudFetch(action: string, body: any = {}) {
       body: JSON.stringify({ action, ...body })
     });
     
-    if (!response.ok) {
-        throw new Error(`Cloud API Error: ${response.status}`);
-    }
-    
+    if (!response.ok) throw new Error(`Status: ${response.status}`);
     return await response.json();
   } catch (error) {
-    console.error("Cloud connection failed:", error);
+    console.error("❌ Cloud Sync Error:", error);
     return null;
   }
 }
@@ -50,7 +51,7 @@ export const getStoredUsers = async (): Promise<User[]> => {
     return cloudData;
   }
 
-  await delay(200);
+  await delay(100);
   const users = localStorage.getItem(USERS_KEY);
   if (!users) {
     const admin: User = {

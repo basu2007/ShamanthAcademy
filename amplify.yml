@@ -6,13 +6,19 @@ frontend:
         - npm install
     build:
       commands:
-        # Prevent failure if AWS_API_URL is not yet defined in the console
+        - echo "🚀 Building Shamanth Academy..."
+        # 1. Inject API Gateway URL from Amplify Environment Variable
         - |
           if [ ! -z "$AWS_API_URL" ]; then
+            echo "✅ AWS_API_URL detected. Injecting into build..."
             sed -i "s|INSERT_AWS_API_URL_HERE|$AWS_API_URL|g" services/db.ts
+            # Masked check for logs
+            echo "🔗 API Target set to: ${AWS_API_URL:0:12}..."
           else
-            echo "⚠️ Warning: AWS_API_URL not found. Fallback to local storage."
+            echo "⚠️ Warning: AWS_API_URL environment variable is missing."
+            echo "👉 Remember to add it in: Amplify Console > App Settings > Environment Variables"
           fi
+        # 2. Bundle the application
         - npm run build
   artifacts:
     baseDirectory: dist
