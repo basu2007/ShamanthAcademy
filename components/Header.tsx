@@ -24,99 +24,84 @@ const Header: React.FC<HeaderProps> = ({
   setSearchQuery
 }) => {
   return (
-    <div className="flex flex-col w-full sticky top-0 z-50">
-      {/* Top Contact Bar (DurgaSoft Style) - Slimmed */}
-      <div className="bg-indigo-900 text-white text-[10px] sm:text-[11px] py-1 px-4">
-        <div className="container mx-auto flex flex-wrap justify-between items-center gap-2">
-          <div className="flex items-center gap-4">
-            <span className="flex items-center gap-1.5">
-              <i className="fa-solid fa-phone text-amber-400 text-[10px]"></i> +91 999 000 1234
+    <div className="flex flex-col w-full sticky top-0 z-50 shadow-xl">
+      {/* Top Professional Bar */}
+      <div className="bg-[#1e1b4b] text-white text-[10px] sm:text-[11px] py-2 px-4 border-b border-white/10">
+        <div className="container mx-auto flex flex-wrap justify-between items-center">
+          <div className="flex items-center gap-6">
+            <span className="flex items-center gap-2 font-medium">
+              <i className="fa-solid fa-phone text-amber-400"></i> +91 999 000 1234
             </span>
-            <span className="hidden sm:flex items-center gap-1.5 border-l border-indigo-700 pl-4">
-              <i className="fa-solid fa-envelope text-amber-400 text-[10px]"></i> contact@shamanthacademy.com
+            <span className="hidden md:flex items-center gap-2 font-medium">
+              <i className="fa-solid fa-envelope text-amber-400"></i> support@shamanthacademy.com
             </span>
           </div>
           <div className="flex items-center gap-4">
-            <button 
-              onClick={() => onNavigate('course-schedule')}
-              className="hover:text-amber-400 transition-colors bg-transparent border-none p-0 cursor-pointer text-[10px] uppercase font-bold tracking-tight"
-            >
-              Schedules
-            </button>
-            <button 
-              onClick={() => onNavigate('new-batches')}
-              className="hover:text-amber-400 transition-colors bg-transparent border-none p-0 cursor-pointer text-[10px] uppercase font-bold tracking-tight"
-            >
-              New Batches
-            </button>
-            <div className="flex gap-2 ml-2">
-              <i className="fa-brands fa-facebook hover:text-blue-400 cursor-pointer text-[10px]"></i>
-              <i className="fa-brands fa-twitter hover:text-sky-400 cursor-pointer text-[10px]"></i>
-              <i className="fa-brands fa-youtube hover:text-red-500 cursor-pointer text-[10px]"></i>
-            </div>
+             <div className="flex gap-3 pr-4 border-r border-white/10 hidden sm:flex">
+                <i className="fa-brands fa-facebook hover:text-amber-400 transition-colors cursor-pointer"></i>
+                <i className="fa-brands fa-linkedin hover:text-amber-400 transition-colors cursor-pointer"></i>
+                <i className="fa-brands fa-youtube hover:text-amber-400 transition-colors cursor-pointer"></i>
+             </div>
+             <button 
+                onClick={() => onNavigate('course-schedule')}
+                className="text-amber-400 font-black uppercase tracking-widest hover:underline"
+             >
+                Course Schedule
+             </button>
           </div>
         </div>
       </div>
 
-      {/* Main Navigation - Slimmed height */}
-      <header className="bg-white border-b border-gray-100 shadow-sm">
-        <div className="container mx-auto px-4 h-14 sm:h-16 flex items-center justify-between gap-4">
-          {/* Logo Section */}
-          <div 
-            onClick={onHomeClick}
-            className="flex items-center gap-2 sm:gap-2.5 cursor-pointer group flex-shrink-0"
-          >
-            <div className="w-8 h-8 sm:w-9 sm:h-9 bg-indigo-700 rounded-lg sm:rounded-xl flex items-center justify-center text-white font-black text-sm sm:text-base group-hover:bg-indigo-800 transition-all shadow-md shadow-indigo-100 relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-2 h-2 bg-amber-400 rounded-bl-full"></div>
+      {/* Main Branding & Navigation */}
+      <header className="bg-white py-3 px-4 border-b border-gray-100">
+        <div className="container mx-auto flex items-center justify-between gap-8">
+          {/* Logo */}
+          <div onClick={onHomeClick} className="flex items-center gap-3 cursor-pointer group flex-shrink-0">
+            <div className="w-10 h-10 bg-indigo-700 rounded-xl flex items-center justify-center text-white font-black text-xl shadow-lg group-hover:bg-indigo-800 transition-all relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-3 h-3 bg-amber-400 rounded-bl-full"></div>
               SA
             </div>
-            
             <div className="flex flex-col -space-y-1">
-              <span className="text-sm sm:text-lg font-black text-gray-900 tracking-tighter leading-none">Shamanth</span>
-              <span className="text-[9px] sm:text-xs font-bold text-indigo-600 tracking-tight">Academy</span>
+              <span className="text-xl font-black text-[#1e1b4b] tracking-tighter">SHAMANTH</span>
+              <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.3em]">ACADEMY</span>
             </div>
           </div>
 
-          {/* Search (Desktop Only) - Slimmed */}
-          <div className="flex-grow max-w-lg relative hidden md:block">
-            <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
+          {/* Search Box */}
+          <div className="flex-grow max-w-xl relative hidden md:block">
             <input 
               type="text"
-              placeholder="Search curriculum..."
+              placeholder="What do you want to learn today?"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-gray-50 border border-gray-100 rounded-lg py-2 pl-10 pr-4 text-sm focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all outline-none"
+              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl py-3 pl-12 pr-4 text-sm font-medium focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-600 focus:bg-white transition-all outline-none shadow-inner"
             />
+            <i className="fa-solid fa-magnifying-glass absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"></i>
           </div>
 
-          {/* Auth Actions */}
-          <div className="flex items-center gap-2 sm:gap-4">
+          {/* User Actions */}
+          <div className="flex items-center gap-4">
             {auth.isAuthenticated ? (
-              <div className="flex items-center gap-2 sm:gap-4">
-                {auth.user?.role === 'ADMIN' && (
-                  <button 
-                    onClick={onAdminClick}
-                    className="text-amber-600 font-bold hover:text-amber-700 hidden lg:block text-[9px] uppercase tracking-wider"
-                  >
-                    Admin
-                  </button>
-                )}
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-amber-100 text-amber-700 flex items-center justify-center font-black shadow-inner text-[10px] sm:text-xs">
-                    {auth.user?.email.charAt(0).toUpperCase()}
-                  </div>
-                  <button 
-                    onClick={onLogout}
-                    className="text-gray-400 hover:text-red-500 font-bold transition-colors p-1"
-                  >
-                    <i className="fa-solid fa-power-off text-xs sm:text-sm"></i>
-                  </button>
+              <div className="flex items-center gap-4">
+                <div className="hidden lg:flex flex-col items-end mr-2">
+                  <span className="text-[10px] font-black text-slate-400 uppercase">Signed In As</span>
+                  <span className="text-xs font-bold text-slate-900">{auth.user?.email.split('@')[0]}</span>
+                </div>
+                <div className="flex items-center gap-3">
+                   {auth.user?.role === 'ADMIN' && (
+                     <button onClick={onAdminClick} className="w-10 h-10 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center hover:bg-amber-100 transition-colors">
+                       <i className="fa-solid fa-user-shield"></i>
+                     </button>
+                   )}
+                   <button onClick={onLogout} className="w-10 h-10 rounded-xl bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-600 transition-all">
+                      <i className="fa-solid fa-power-off"></i>
+                   </button>
                 </div>
               </div>
             ) : (
               <button 
                 onClick={onLoginClick}
-                className="bg-indigo-700 text-white px-4 sm:px-6 py-1.5 sm:py-2 rounded-lg sm:rounded-xl font-black hover:bg-indigo-800 transition-all shadow-md shadow-indigo-100 text-[10px] sm:text-xs tracking-tight"
+                className="bg-indigo-700 hover:bg-indigo-800 text-white px-8 py-3 rounded-2xl font-black transition-all shadow-xl shadow-indigo-200 active:scale-95 text-xs uppercase tracking-widest"
               >
                 Sign In
               </button>
@@ -125,31 +110,29 @@ const Header: React.FC<HeaderProps> = ({
         </div>
       </header>
 
-      {/* Mobile Search Bar - Slimmed */}
-      <div className="md:hidden bg-white border-b border-gray-100 px-4 py-1.5">
-        <div className="relative">
-          <i className="fa-solid fa-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
-          <input 
-            type="text"
-            placeholder="Search curriculum..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-gray-50 border border-gray-100 rounded-lg py-1.5 pl-9 pr-4 text-[11px] focus:ring-1 focus:ring-indigo-500 outline-none"
-          />
+      {/* Flash News Marquee */}
+      <div className="bg-amber-50 border-b border-amber-100 py-2 overflow-hidden flex items-center">
+        <div className="bg-amber-500 text-white text-[10px] font-black uppercase px-4 py-1.5 rounded-r-full shadow-lg z-10 flex-shrink-0 animate-pulse">
+          <i className="fa-solid fa-bolt mr-2"></i>Flash News
         </div>
-      </div>
-
-      {/* News Marquee (DurgaSoft Style) - Compact */}
-      <div className="bg-amber-50 border-b border-amber-100 py-1 overflow-hidden">
-        <div className="container mx-auto flex items-center">
-          <span className="bg-amber-500 text-white text-[8px] font-black uppercase px-1.5 py-0.5 rounded ml-4 z-10 flex-shrink-0">News</span>
-          <div className="flex-grow overflow-hidden whitespace-nowrap">
-            <div className="inline-block animate-marquee hover:pause whitespace-nowrap text-[10px] sm:text-[11px] font-bold text-amber-900">
-              <span className="mx-8">🚀 New React 19 Mastery Course Launching Next Week!</span>
-              <span className="mx-8">🔥 Java Full Stack Developer Batch starting from 25th July.</span>
-              <span className="mx-8">💎 Special Discount for Early Enrollment.</span>
-              <span className="mx-8">📢 Offline training batches now available at Mathikere Branch.</span>
-            </div>
+        <div className="flex-grow overflow-hidden whitespace-nowrap relative">
+          <div className="inline-block animate-marquee hover:pause text-[11px] sm:text-xs font-bold text-amber-900">
+            <span className="mx-12 flex items-center gap-3">
+              <span className="w-2 h-2 rounded-full bg-amber-500"></span> 
+              New Batch for Java Full Stack Development starting from July 25th, 2024. Register now for Early Bird Discount!
+            </span>
+            <span className="mx-12 flex items-center gap-3">
+              <span className="w-2 h-2 rounded-full bg-amber-500"></span> 
+              React 19 & Next.js 15 Masterclass is now live! Check out the free preview lessons.
+            </span>
+            <span className="mx-12 flex items-center gap-3">
+              <span className="w-2 h-2 rounded-full bg-amber-500"></span> 
+              AWS Certified Solutions Architect (SAA-C03) Offline Batch registrations open at Mathikere Branch.
+            </span>
+            <span className="mx-12 flex items-center gap-3">
+              <span className="w-2 h-2 rounded-full bg-amber-500"></span> 
+              Placement assistance program for 2023 & 2024 pass-outs initiated. Contact placement cell.
+            </span>
           </div>
         </div>
       </div>
@@ -160,7 +143,7 @@ const Header: React.FC<HeaderProps> = ({
           100% { transform: translateX(-100%); }
         }
         .animate-marquee {
-          animation: marquee 20s linear infinite;
+          animation: marquee 35s linear infinite;
         }
         .pause:hover {
           animation-play-state: paused;

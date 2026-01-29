@@ -24,15 +24,15 @@ try {
   const apiKey = process.env.API_KEY || '';
   const esbuildPath = path.join(__dirname, 'node_modules', '.bin', 'esbuild');
   
-  // Explicitly mark dependencies as external to match the Import Map in index.html
+  // Mark all CDN-loaded packages as external
   const externals = [
     'react',
     'react-dom',
     'react/jsx-runtime',
+    'react-dom/client',
     '@google/genai'
   ].map(pkg => `--external:${pkg}`).join(' ');
 
-  // Construct command with explicit external flags
   const esbuildCommand = `"${esbuildPath}" index.tsx --bundle --outfile=dist/index.js --format=esm --jsx=automatic --minify ${externals} --define:process.env.API_KEY='\"${apiKey}\"'`;
   
   console.log('🛠️  Running esbuild...');
