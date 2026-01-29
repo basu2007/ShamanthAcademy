@@ -23,10 +23,11 @@ try {
   fs.mkdirSync(DIST_DIR, { recursive: true });
 
   // 3. Bundle JS with esbuild
-  // We prioritize the local node_modules path for CI stability
+  // We inject the API_KEY from the environment so it's available in the browser as process.env.API_KEY
   console.log('📦 Bundling application source...');
+  const apiKey = process.env.API_KEY || '';
   const esbuildPath = path.join(__dirname, 'node_modules', '.bin', 'esbuild');
-  const esbuildCommand = `"${esbuildPath}" index.tsx --bundle --outfile=dist/index.js --format=esm --jsx=automatic --minify --external:react --external:react-dom --external:react/jsx-runtime`;
+  const esbuildCommand = `"${esbuildPath}" index.tsx --bundle --outfile=dist/index.js --format=esm --jsx=automatic --minify --external:react --external:react-dom --external:react/jsx-runtime --define:process.env.API_KEY='\"${apiKey}\"'`;
   
   execSync(esbuildCommand, { stdio: 'inherit', shell: true });
 
@@ -39,7 +40,6 @@ try {
     if (fs.existsSync(src)) {
       if (fileName === 'index.html') {
         let htmlContent = fs.readFileSync(src, 'utf8');
-        // Point the entry script to the bundled JS file instead of TSX
         htmlContent = htmlContent.replace(/src=["']index\.tsx["']/gi, 'src="index.js"');
         fs.writeFileSync(dest, htmlContent);
         console.log(`   ✅ Patched and copied: ${fileName}`);
@@ -52,7 +52,7 @@ try {
     }
   });
 
-  // 5. Final Verification for Amplify
+  // 5. Final Verification
   const entryPoint = path.join(DIST_DIR, 'index.html');
   if (fs.existsSync(entryPoint)) {
     console.log('\n--- ✨ BUILD SUCCESSFUL! ---');
