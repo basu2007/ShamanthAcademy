@@ -23,12 +23,27 @@ try {
   fs.mkdirSync(DIST_DIR, { recursive: true });
 
   // 3. Bundle JS with esbuild
-  // We inject the API_KEY from the environment so it's available in the browser as process.env.API_KEY
   console.log('📦 Bundling application source...');
-  const apiKey = process.env.API_KEY || '';
-  const esbuildPath = path.join(__dirname, 'node_modules', '.bin', 'esbuild');
-  const esbuildCommand = `"${esbuildPath}" index.tsx --bundle --outfile=dist/index.js --format=esm --jsx=automatic --minify --external:react --external:react-dom --external:react/jsx-runtime --define:process.env.API_KEY='\"${apiKey}\"'`;
   
+  const apiKey = process.env.API_KEY || '';
+  if (!apiKey) {
+    console.warn('⚠️  Warning: API_KEY environment variable is empty. AI features will be disabled.');
+  }
+
+  const esbuildPath = path.join(__dirname, 'node_modules', '.bin', 'esbuild');
+  
+  // We mark @google/genai as external so esbuild doesn't try to resolve it.
+  // The browser will resolve it using the <script type="importmap"> in index.html
+  const externals = [
+    'react',
+    'react-dom',
+    'react/jsx-runtime',
+    '@google/genai'
+  ].map(pkg => `--external:${pkg}`).join(' ');
+
+  const esbuildCommand = `"${esbuildPath}" index.tsx --bundle --outfile=dist/index.js --format=esm --jsx=automatic --minify ${externals} --define:process.env.API_KEY='\"${apiKey}\"'`;
+  
+  console.log('🛠️  Running esbuild...');
   execSync(esbuildCommand, { stdio: 'inherit', shell: true });
 
   // 4. Process assets
@@ -40,6 +55,7 @@ try {
     if (fs.existsSync(src)) {
       if (fileName === 'index.html') {
         let htmlContent = fs.readFileSync(src, 'utf8');
+        // Point the production HTML to the bundled JS instead of the TSX
         htmlContent = htmlContent.replace(/src=["']index\.tsx["']/gi, 'src="index.js"');
         fs.writeFileSync(dest, htmlContent);
         console.log(`   ✅ Patched and copied: ${fileName}`);
