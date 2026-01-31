@@ -2,10 +2,11 @@
 import { User, PlatformSettings, Course } from '../types';
 import { ADMIN_CREDENTIALS, MOCK_COURSES } from '../constants';
 
-const USERS_KEY = 'shamanth_academy_users_v1';
+const USERS_KEY = 'shamanth_academy_users_v2'; // Bumped version for fresh state
 const SETTINGS_KEY = 'shamanth_academy_settings_v1';
 const COURSES_KEY = 'shamanth_academy_courses_v1';
 
+// This URL is injected during build. If not set, app runs in local mode.
 const REMOTE_API_URL = "INSERT_AWS_API_URL_HERE";
 
 const DEFAULT_SETTINGS: PlatformSettings = {
@@ -26,46 +27,58 @@ const isCloudConnected = () => {
          REMOTE_API_URL.startsWith("http");
 };
 
+/**
+ * cloudFetch handles all API communication. 
+ * It is designed to NEVER throw a fetch error to the UI.
+ */
 async function cloudFetch(action: string, body: any = {}) {
   if (!isCloudConnected()) return null;
+  
   try {
+    const controller = new AbortController();
+    const id = setTimeout(() => controller.abort(), 5000); // 5s timeout
+
     const response = await fetch(REMOTE_API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ action, ...body })
+      body: JSON.stringify({ action, ...body }),
+      signal: controller.signal
     });
     
-    const data = await response.json();
-    if (!response.ok) {
-      // Create a specialized error object
-      const err: any = new Error(data.error || 'Server error');
-      err.status = response.status;
+    clearTimeout(id);
+
+    // Specific Conflict check for registration
+    if (response.status === 409) {
+      const err: any = new Error('User exists');
+      err.status = 409;
       throw err;
     }
-    return data;
+
+    if (!response.ok) return null;
+    return await response.json();
   } catch (error: any) {
-    console.error(`❌ Cloud Sync Error (${action}):`, error);
-    throw error; // Rethrow to let the caller handle UI messaging
+    // If it's an intentional 'User Exists' error, pass it through
+    if (error.status === 409) throw error;
+    
+    // Otherwise, log and return null to trigger local fallback
+    console.warn(`⚠️ Network unreachable for action: ${action}. Falling back to Local Storage.`);
+    return null; 
   }
 }
 
-// Course Catalog Logic
+// --- COURSE CATALOG ---
 export const getCourses = async (): Promise<Course[]> => {
-  if (isCloudConnected()) {
-    try {
-      const cloudCourses = await cloudFetch('getCourses');
-      if (cloudCourses && Array.isArray(cloudCourses)) {
-        localStorage.setItem(COURSES_KEY, JSON.stringify(cloudCourses));
-        return cloudCourses;
-      }
-    } catch (e) {}
+  const cloudCourses = await cloudFetch('getCourses');
+  if (cloudCourses && Array.isArray(cloudCourses)) {
+    localStorage.setItem(COURSES_KEY, JSON.stringify(cloudCourses));
+    return cloudCourses;
   }
   const local = localStorage.getItem(COURSES_KEY);
   return local ? JSON.parse(local) : MOCK_COURSES;
 };
 
 export const saveCourse = async (course: Course): Promise<void> => {
-  if (isCloudConnected()) await cloudFetch('saveCourse', { course });
+  await cloudFetch('saveCourse', { course });
   const courses = await getCourses();
   const index = courses.findIndex(c => c.id === course.id);
   if (index !== -1) courses[index] = course; else courses.push(course);
@@ -73,121 +86,130 @@ export const saveCourse = async (course: Course): Promise<void> => {
 };
 
 export const deleteCourse = async (courseId: string): Promise<void> => {
-  if (isCloudConnected()) await cloudFetch('deleteCourse', { courseId });
+  await cloudFetch('deleteCourse', { courseId });
   const courses = await getCourses();
   localStorage.setItem(COURSES_KEY, JSON.stringify(courses.filter(c => c.id !== courseId)));
 };
 
-// Settings Logic
+// --- SETTINGS ---
 export const getPlatformSettings = async (): Promise<PlatformSettings> => {
-  if (isCloudConnected()) {
-    try {
-      const cloudData = await cloudFetch('getSettings');
-      if (cloudData && typeof cloudData === 'object' && cloudData.upiId) {
-        localStorage.setItem(SETTINGS_KEY, JSON.stringify(cloudData));
-        return { ...DEFAULT_SETTINGS, ...cloudData };
-      }
-    } catch (e) {}
+  const cloudData = await cloudFetch('getSettings');
+  if (cloudData && typeof cloudData === 'object' && cloudData.upiId) {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(cloudData));
+    return { ...DEFAULT_SETTINGS, ...cloudData };
   }
   const local = localStorage.getItem(SETTINGS_KEY);
   return local ? { ...DEFAULT_SETTINGS, ...JSON.parse(local) } : DEFAULT_SETTINGS;
 };
 
 export const savePlatformSettings = async (settings: PlatformSettings): Promise<void> => {
-  if (isCloudConnected()) await cloudFetch('saveSettings', { settings });
+  await cloudFetch('saveSettings', { settings });
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 };
 
-// User Logic
+// --- USERS & AUTH ---
 export const getStoredUsers = async (): Promise<User[]> => {
-  if (isCloudConnected()) {
-    try {
-      const cloudData = await cloudFetch('getAllUsers');
-      if (cloudData && Array.isArray(cloudData)) {
-        localStorage.setItem(USERS_KEY, JSON.stringify(cloudData));
-        return cloudData;
-      }
-    } catch (e) {}
+  const cloudData = await cloudFetch('getAllUsers');
+  if (cloudData && Array.isArray(cloudData)) {
+    localStorage.setItem(USERS_KEY, JSON.stringify(cloudData));
+    return cloudData;
   }
   const users = localStorage.getItem(USERS_KEY);
   return users ? JSON.parse(users) : [];
 };
 
 export const registerUser = async (email: string, pin: string): Promise<User | null> => {
-  if (isCloudConnected()) {
-    try {
-      const user = await cloudFetch('register', { email, pin });
-      // Invalidate local cache to force a refresh on next read
-      localStorage.removeItem(USERS_KEY);
-      return user;
-    } catch (err: any) {
-      if (err.status === 409) return null; // Signal that user exists
-      throw err;
+  const cleanEmail = email.trim().toLowerCase();
+  
+  // 1. Initial check of current memory/local state
+  const currentUsers = await getStoredUsers();
+  if (currentUsers.some(u => u.email === cleanEmail)) {
+    console.log("Local check: User already exists.");
+    return null;
+  }
+
+  // 2. Try Cloud
+  try {
+    const cloudUser = await cloudFetch('register', { email: cleanEmail, pin });
+    if (cloudUser) {
+      localStorage.removeItem(USERS_KEY); // Invalidate cache
+      return cloudUser;
     }
+  } catch (err: any) {
+    if (err.status === 409) return null; // Email taken in cloud
   }
   
+  // 3. Final Local Persistence (Double check again)
   const users = await getStoredUsers();
-  if (users.find(u => u.email === email)) return null;
+  if (users.find(u => u.email === cleanEmail)) return null;
+  
   const newUser: User = {
-    id: Date.now().toString(), email, pin, role: 'USER', enrolledCourses: [], pendingUnlocks: [], enrollmentDates: {}, lastActive: new Date().toISOString()
+    id: `u_${Date.now()}`,
+    email: cleanEmail,
+    pin,
+    role: 'USER',
+    enrolledCourses: [],
+    pendingUnlocks: [],
+    enrollmentDates: {},
+    lastActive: new Date().toISOString()
   };
+  
   users.push(newUser);
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
   return newUser;
 };
 
 export const loginUser = async (email: string, pin: string): Promise<User | null> => {
-  // 1. MASTER ADMIN CHECK (Always works, bypasses cloud if needed)
-  if (email.trim().toLowerCase() === ADMIN_CREDENTIALS.email.toLowerCase() && pin.trim() === ADMIN_CREDENTIALS.pin) {
+  const cleanEmail = email.trim().toLowerCase();
+
+  // Admin Master Override
+  if (cleanEmail === ADMIN_CREDENTIALS.email.toLowerCase() && pin.trim() === ADMIN_CREDENTIALS.pin) {
     return {
       id: 'admin', email: ADMIN_CREDENTIALS.email, pin: ADMIN_CREDENTIALS.pin,
       role: 'ADMIN', enrolledCourses: [], pendingUnlocks: [], lastActive: new Date().toISOString()
     };
   }
 
-  // 2. CLOUD LOGIN
-  if (isCloudConnected()) {
-    try {
-      return await cloudFetch('login', { email, pin });
-    } catch (e) {
-      // Fallback only if server is unreachable
-    }
-  }
+  // Cloud Login
+  const cloudUser = await cloudFetch('login', { email: cleanEmail, pin });
+  if (cloudUser) return cloudUser;
 
-  // 3. LOCAL FALLBACK
+  // Local Login
   const users = await getStoredUsers();
-  return users.find(u => u.email === email && u.pin === pin) || null;
+  return users.find(u => u.email === cleanEmail && u.pin === pin) || null;
 };
 
 export const deleteUser = async (userId: string): Promise<void> => {
-  if (isCloudConnected()) {
-    await cloudFetch('deleteUser', { userId });
-  }
+  // FORCE Local Delete First to prevent "Already Exists" ghosting
   const users = await getStoredUsers();
-  localStorage.setItem(USERS_KEY, JSON.stringify(users.filter(u => u.id !== userId)));
+  const updated = users.filter(u => u.id !== userId);
+  localStorage.setItem(USERS_KEY, JSON.stringify(updated));
+
+  // Then attempt cloud delete in background
+  await cloudFetch('deleteUser', { userId });
 };
 
 export const requestUnlock = async (userId: string, courseId: string): Promise<void> => {
-  if (isCloudConnected()) { await cloudFetch('requestUnlock', { userId, courseId }); return; }
+  if (await cloudFetch('requestUnlock', { userId, courseId })) return;
   const users = await getStoredUsers();
   const updated = users.map(u => u.id === userId ? { ...u, pendingUnlocks: [...new Set([...u.pendingUnlocks, courseId])], lastActive: new Date().toISOString() } : u);
   localStorage.setItem(USERS_KEY, JSON.stringify(updated));
 };
 
 export const approveUnlock = async (userId: string, courseId: string): Promise<void> => {
-  if (isCloudConnected()) { await cloudFetch('approveUnlock', { userId, courseId }); return; }
+  if (await cloudFetch('approveUnlock', { userId, courseId })) return;
   const users = await getStoredUsers();
-  const updated = users.map(u => u.id === userId ? { ...u, pendingUnlocks: u.pendingUnlocks.filter(id => id !== courseId), enrolledCourses: [...new Set([...u.enrolledCourses, courseId])], enrollmentDates: { ...u.enrollmentDates, [courseId]: new Date().toISOString() }, lastActive: new Date().toISOString() } : u);
+  const updated = users.map(u => u.id === userId ? { ...u, pendingUnlocks: (u.pendingUnlocks || []).filter(id => id !== courseId), enrolledCourses: [...new Set([...(u.enrolledCourses || []), courseId])], enrollmentDates: { ...(u.enrollmentDates || {}), [courseId]: new Date().toISOString() }, lastActive: new Date().toISOString() } : u);
   localStorage.setItem(USERS_KEY, JSON.stringify(updated));
 };
 
 export const lockCourse = async (userId: string, courseId: string): Promise<void> => {
-  if (isCloudConnected()) { await cloudFetch('lockCourse', { userId, courseId }); return; }
+  if (await cloudFetch('lockCourse', { userId, courseId })) return;
   const users = await getStoredUsers();
   const updated = users.map(u => {
     if (u.id === userId) {
-      const dates = { ...u.enrollmentDates }; delete dates[courseId];
-      return { ...u, enrolledCourses: u.enrolledCourses.filter(id => id !== courseId), enrollmentDates: dates, lastActive: new Date().toISOString() };
+      const dates = { ...(u.enrollmentDates || {}) }; delete dates[courseId];
+      return { ...u, enrolledCourses: (u.enrolledCourses || []).filter(id => id !== courseId), enrollmentDates: dates, lastActive: new Date().toISOString() };
     }
     return u;
   });

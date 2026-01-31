@@ -26,19 +26,29 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
         if (user) {
           onLogin(user);
         } else {
-          setError('Email already registered');
+          setError('Email is already registered. Please login.');
         }
       } else {
         const user = await db.loginUser(email, pin);
         if (user) {
           onLogin(user);
         } else {
-          setError('Invalid email or access PIN');
+          setError('Invalid email or 4-digit PIN.');
         }
       }
     } catch (err: any) {
-      console.error(err);
-      setError(err.message || 'Connection failure. Try again.');
+      console.error("Auth Exception:", err);
+      // We catch ALL network errors here and give a user-friendly message
+      setError('Connection weak. Attempting local authentication...');
+      
+      // Attempt a forced local lookup as a last resort
+      try {
+        const users = await db.getStoredUsers();
+        const localUser = users.find(u => u.email === email.trim().toLowerCase() && u.pin === pin);
+        if (localUser) {
+          onLogin(localUser);
+        }
+      } catch (e) {}
     } finally {
       setIsLoading(false);
     }
@@ -52,12 +62,10 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
       ></div>
       
       <div className="bg-white rounded-[2rem] w-full max-w-md p-8 md:p-10 shadow-2xl relative z-10 animate-in fade-in zoom-in slide-in-from-bottom-8 duration-300">
-        {/* Close Button */}
         <button 
           type="button"
           onClick={onClose}
           className="absolute top-6 right-6 w-10 h-10 rounded-full bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 flex items-center justify-center transition-all border border-slate-100 group z-20"
-          aria-label="Close"
         >
           <i className="fa-solid fa-xmark text-lg group-hover:scale-110"></i>
         </button>
@@ -70,7 +78,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
             {isRegister ? 'New Student' : 'Student Portal'}
           </h2>
           <p className="text-gray-400 text-xs mt-1 font-medium">
-            {isRegister ? 'Join our global academy today' : 'Continue your technical journey'}
+            Join Shamanth Academy's global tech hub
           </p>
         </div>
 
@@ -91,7 +99,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
           </div>
 
           <div className="space-y-1">
-            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Access PIN (4-Digit)</label>
+            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">4-Digit Access PIN</label>
             <div className="relative">
               <i className="fa-solid fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"></i>
               <input 
@@ -108,7 +116,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
 
           {error && (
             <div className="text-red-500 text-[10px] font-black bg-red-50 py-3 px-4 rounded-xl text-center border border-red-100 uppercase tracking-wider flex items-center justify-center gap-2">
-              <i className="fa-solid fa-circle-exclamation"></i>
+              <i className="fa-solid fa-triangle-exclamation"></i>
               {error}
             </div>
           )}
@@ -122,19 +130,19 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
               <span className="flex items-center justify-center gap-2">
                 <i className="fa-solid fa-circle-notch animate-spin"></i> Processing...
               </span>
-            ) : (isRegister ? 'Create Account' : 'Authenticate')}
+            ) : (isRegister ? 'Register' : 'Login')}
           </button>
         </form>
 
         <div className="mt-8 pt-6 border-t border-slate-50 text-center">
           <p className="text-slate-400 text-xs font-bold">
-            {isRegister ? 'Member already?' : "Not enrolled yet?"}
+            {isRegister ? 'Already a student?' : "New here?"}
             <button 
               type="button"
               onClick={() => { setIsRegister(!isRegister); setError(''); }}
               className="text-indigo-600 font-black ml-2 hover:underline"
             >
-              {isRegister ? 'Log In' : 'Register'}
+              {isRegister ? 'Sign In' : 'Sign Up'}
             </button>
           </p>
         </div>
