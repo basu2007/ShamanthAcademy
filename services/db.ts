@@ -55,7 +55,7 @@ export const getPlatformSettings = async (): Promise<PlatformSettings> => {
   return settings || {
     paymentQrCode: null,
     upiId: 'shamanth@okaxis',
-    contactNumber: '+91 999 000 1234'
+    contactNumber: '+91 9902122531'
   };
 };
 

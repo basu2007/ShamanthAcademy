@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { AuthState } from '../types.ts';
 import { InfoTopic } from './InfoView.tsx';
@@ -30,7 +31,7 @@ const Header: React.FC<HeaderProps> = ({
         <div className="container mx-auto flex flex-wrap justify-between items-center">
           <div className="flex items-center gap-6">
             <span className="flex items-center gap-2 font-medium">
-              <i className="fa-solid fa-phone text-amber-400"></i> +91 999 000 1234
+              <i className="fa-solid fa-phone text-amber-400"></i> +91 9902122531
             </span>
             <span className="hidden md:flex items-center gap-2 font-medium">
               <i className="fa-solid fa-envelope text-amber-400"></i> support@shamanthacademy.com

@@ -37,7 +37,7 @@ exports.handler = async (event) => {
                     id: SETTINGS_ID,
                     paymentQrCode: null,
                     upiId: 'shamanth@okaxis',
-                    contactNumber: '+91 999 000 1234'
+                    contactNumber: '+91 9902122531'
                 });
             }
 
