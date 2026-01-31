@@ -47,7 +47,7 @@ const AdminDashboard: React.FC = () => {
     setCourses(courseData);
     
     // Set first category as default if none selected
-    if (settingsData && settingsData.categories.length > 0 && !newCourse.category) {
+    if (settingsData && settingsData.categories?.length > 0 && !newCourse.category) {
       setNewCourse(prev => ({ ...prev, category: settingsData.categories[0] }));
     }
   };
@@ -77,24 +77,24 @@ const AdminDashboard: React.FC = () => {
     // Handle new category creation
     if (isAddingNewCategory && newCategoryInput.trim()) {
       finalCategory = newCategoryInput.trim();
-      if (settings && !settings.categories.includes(finalCategory)) {
+      if (settings && !settings.categories?.includes(finalCategory)) {
         const updatedSettings = {
           ...settings,
-          categories: [...settings.categories, finalCategory]
+          categories: [...(settings.categories || []), finalCategory]
         };
         await db.savePlatformSettings(updatedSettings);
         setSettings(updatedSettings);
       }
     }
 
-    if (!finalCategory) {
-      alert("Please select or add a category.");
-      return;
+    if (!finalCategory && !settings?.categories?.length) {
+       alert("No categories available. Please add a new category first.");
+       return;
     }
 
     const courseToSave: Course = {
       ...newCourse as Course,
-      category: finalCategory,
+      category: finalCategory || settings?.categories?.[0] || 'Uncategorized',
       id: newCourse.id || Math.random().toString(36).substr(2, 9),
       price: Number(newCourse.price) || 0
     };
@@ -163,7 +163,7 @@ const AdminDashboard: React.FC = () => {
     if (!newNewsItem.trim() || !settings) return;
     setSettings({
       ...settings,
-      flashNews: [...settings.flashNews, newNewsItem.trim()]
+      flashNews: [...(settings.flashNews || []), newNewsItem.trim()]
     });
     setNewNewsItem('');
   };
@@ -172,12 +172,12 @@ const AdminDashboard: React.FC = () => {
     if (!settings) return;
     setSettings({
       ...settings,
-      flashNews: settings.flashNews.filter((_, i) => i !== index)
+      flashNews: (settings.flashNews || []).filter((_, i) => i !== index)
     });
   };
 
   const pendingRequests = users.flatMap(user => 
-    user.pendingUnlocks.map(courseId => ({
+    (user.pendingUnlocks || []).map(courseId => ({
       userId: user.id,
       userEmail: user.email,
       courseId,
@@ -188,7 +188,7 @@ const AdminDashboard: React.FC = () => {
   const enrollmentReport = useMemo(() => {
     const report: any[] = [];
     users.forEach(user => {
-      user.enrolledCourses.forEach(courseId => {
+      (user.enrolledCourses || []).forEach(courseId => {
         const course = courses.find(c => c.id === courseId);
         report.push({
           userId: user.id,
@@ -254,7 +254,7 @@ const AdminDashboard: React.FC = () => {
                   title: '',
                   description: '',
                   instructor: 'Shamanth S.',
-                  category: settings?.categories[0] || '',
+                  category: settings?.categories?.[0] || '',
                   price: 4999,
                   isFree: false,
                   thumbnail: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=800',
@@ -304,7 +304,7 @@ const AdminDashboard: React.FC = () => {
                         onChange={e => setNewCourse({...newCourse, category: e.target.value})} 
                         className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl font-bold outline-none focus:border-indigo-600 shadow-inner"
                       >
-                        {settings?.categories.map(c => <option key={c} value={c}>{c}</option>)}
+                        {settings?.categories?.map(c => <option key={c} value={c}>{c}</option>)}
                       </select>
                     )}
                   </div>
@@ -390,7 +390,7 @@ const AdminDashboard: React.FC = () => {
                     <div className="flex items-center gap-2 mb-6 text-slate-400 font-bold text-[10px] uppercase tracking-wider">
                       <span className="bg-indigo-50 text-indigo-600 px-2 py-0.5 rounded-md">{course.category}</span>
                       <span>•</span>
-                      <span>{course.videos.length} Modules</span>
+                      <span>{(course.videos || []).length} Modules</span>
                     </div>
                     <div className="flex gap-3">
                        <button 
@@ -623,7 +623,7 @@ const AdminDashboard: React.FC = () => {
                </div>
 
                <div className="space-y-3 max-h-[400px] overflow-y-auto pr-2 scrollbar-hide">
-                  {settings.flashNews.map((news, idx) => (
+                  {(settings.flashNews || []).map((news, idx) => (
                     <div key={idx} className="flex gap-4 items-center bg-slate-50 p-4 rounded-2xl border border-slate-100 group">
                       <span className="w-6 h-6 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center text-[10px] font-black shrink-0">{idx + 1}</span>
                       <p className="flex-grow text-[11px] font-bold text-slate-600 leading-tight">{news}</p>
@@ -635,7 +635,7 @@ const AdminDashboard: React.FC = () => {
                       </button>
                     </div>
                   ))}
-                  {settings.flashNews.length === 0 && (
+                  {(!settings.flashNews || settings.flashNews.length === 0) && (
                     <p className="text-center text-slate-400 py-10 font-bold italic text-sm">No news alerts configured.</p>
                   )}
                </div>

@@ -1,7 +1,7 @@
 
 /**
  * AWS LAMBDA BACKEND (Node.js 18+)
- * Updated to support Platform Settings persistence.
+ * Comprehensive persistence for Users, Courses, and Platform Settings.
  */
 
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
@@ -10,7 +10,7 @@ const {
   ScanCommand, 
   PutCommand, 
   GetCommand, 
-  UpdateCommand 
+  DeleteCommand
 } = require("@aws-sdk/lib-dynamodb");
 
 const client = new DynamoDBClient({});
@@ -28,6 +28,7 @@ exports.handler = async (event) => {
         const { action } = body;
         
         switch (action) {
+            // --- SETTINGS OPERATIONS ---
             case 'getSettings': {
                 const { Item } = await docClient.send(new GetCommand({ 
                     TableName: TABLE_NAME, 
@@ -35,9 +36,12 @@ exports.handler = async (event) => {
                 }));
                 return response(200, Item || {
                     id: SETTINGS_ID,
+                    type: 'SETTINGS',
                     paymentQrCode: null,
                     upiId: 'shamanth@okaxis',
-                    contactNumber: '+91 9902122531'
+                    contactNumber: '+91 9902122531',
+                    categories: ['React', 'Java', 'Python', 'AWS', 'Data Science'],
+                    flashNews: []
                 });
             }
 
@@ -45,6 +49,7 @@ exports.handler = async (event) => {
                 const settingsItem = {
                     ...body.settings,
                     id: SETTINGS_ID,
+                    type: 'SETTINGS',
                     updatedAt: new Date().toISOString()
                 };
                 await docClient.send(new PutCommand({ 
@@ -54,21 +59,54 @@ exports.handler = async (event) => {
                 return response(200, { success: true });
             }
 
+            // --- COURSE CATALOG OPERATIONS ---
+            case 'getCourses': {
+                const data = await docClient.send(new ScanCommand({ 
+                    TableName: TABLE_NAME 
+                }));
+                // Return only items marked as type 'COURSE'
+                const courses = data.Items.filter(item => item.type === 'COURSE');
+                return response(200, courses);
+            }
+
+            case 'saveCourse': {
+                const courseItem = {
+                    ...body.course,
+                    type: 'COURSE',
+                    updatedAt: new Date().toISOString()
+                };
+                await docClient.send(new PutCommand({ 
+                    TableName: TABLE_NAME, 
+                    Item: courseItem 
+                }));
+                return response(200, { success: true });
+            }
+
+            case 'deleteCourse': {
+                await docClient.send(new DeleteCommand({ 
+                    TableName: TABLE_NAME, 
+                    Key: { id: body.courseId } 
+                }));
+                return response(200, { success: true });
+            }
+
+            // --- USER & AUTH OPERATIONS ---
             case 'getAllUsers': {
                 const data = await docClient.send(new ScanCommand({ TableName: TABLE_NAME }));
-                // Filter out the settings item from the user list
-                const usersOnly = data.Items.filter(item => item.id !== SETTINGS_ID);
+                const usersOnly = data.Items.filter(item => item.type === 'USER');
                 return response(200, usersOnly);
             }
                 
             case 'register': {
                 const newUser = {
                     id: Date.now().toString(),
+                    type: 'USER',
                     email: body.email,
                     pin: body.pin,
                     role: 'USER',
                     enrolledCourses: [],
                     pendingUnlocks: [],
+                    enrollmentDates: {},
                     lastActive: new Date().toISOString()
                 };
                 await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: newUser }));
@@ -77,7 +115,7 @@ exports.handler = async (event) => {
 
             case 'login': {
                 const scanData = await docClient.send(new ScanCommand({ TableName: TABLE_NAME }));
-                const user = scanData.Items.find(u => u.email === body.email && u.pin === body.pin && u.id !== SETTINGS_ID);
+                const user = scanData.Items.find(u => u.email === body.email && u.pin === body.pin && u.type === 'USER');
                 if (user) {
                     user.lastActive = new Date().toISOString();
                     await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: user }));
@@ -101,6 +139,8 @@ exports.handler = async (event) => {
                 if (seeker) {
                     seeker.enrolledCourses = [...new Set([...seeker.enrolledCourses, body.courseId])];
                     seeker.pendingUnlocks = seeker.pendingUnlocks.filter(id => id !== body.courseId);
+                    seeker.enrollmentDates = seeker.enrollmentDates || {};
+                    seeker.enrollmentDates[body.courseId] = new Date().toISOString();
                     seeker.lastActive = new Date().toISOString();
                     await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: seeker }));
                 }
@@ -111,6 +151,7 @@ exports.handler = async (event) => {
                 const { Item: seeker } = await docClient.send(new GetCommand({ TableName: TABLE_NAME, Key: { id: body.userId } }));
                 if (seeker) {
                     seeker.enrolledCourses = seeker.enrolledCourses.filter(id => id !== body.courseId);
+                    if (seeker.enrollmentDates) delete seeker.enrollmentDates[body.courseId];
                     seeker.lastActive = new Date().toISOString();
                     await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: seeker }));
                 }

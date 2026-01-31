@@ -8,6 +8,19 @@ const COURSES_KEY = 'shamanth_academy_courses_v1';
 
 const REMOTE_API_URL = "INSERT_AWS_API_URL_HERE";
 
+const DEFAULT_SETTINGS: PlatformSettings = {
+  paymentQrCode: null,
+  upiId: 'shamanth@okaxis',
+  contactNumber: '+91 9902122531',
+  categories: ['React', 'Java', 'Python', 'AWS', 'Data Science'],
+  flashNews: [
+    'New Batch for Java Full Stack Development starting from July 25th, 2024. Register now for Early Bird Discount!',
+    'React 19 & Next.js 15 Masterclass is now live! Check out the free preview lessons.',
+    'AWS Certified Solutions Architect (SAA-C03) Offline Batch registrations open at Mathikere Branch.',
+    'Placement assistance program for 2023 & 2024 pass-outs initiated. Contact placement cell.'
+  ]
+};
+
 const isCloudConnected = () => {
   return REMOTE_API_URL && 
          !REMOTE_API_URL.includes("INSERT_AWS") && 
@@ -34,9 +47,16 @@ async function cloudFetch(action: string, body: any = {}) {
 
 // Course Catalog Logic
 export const getCourses = async (): Promise<Course[]> => {
+  if (isCloudConnected()) {
+    const cloudCourses = await cloudFetch('getCourses');
+    if (cloudCourses && Array.isArray(cloudCourses)) {
+      localStorage.setItem(COURSES_KEY, JSON.stringify(cloudCourses));
+      return cloudCourses;
+    }
+  }
+
   const local = localStorage.getItem(COURSES_KEY);
   if (!local) {
-    // Initialize with mock courses if empty
     localStorage.setItem(COURSES_KEY, JSON.stringify(MOCK_COURSES));
     return MOCK_COURSES;
   }
@@ -44,6 +64,12 @@ export const getCourses = async (): Promise<Course[]> => {
 };
 
 export const saveCourse = async (course: Course): Promise<void> => {
+  // Save to cloud
+  if (isCloudConnected()) {
+    await cloudFetch('saveCourse', { course });
+  }
+
+  // Fallback/Cache to local
   const courses = await getCourses();
   const index = courses.findIndex(c => c.id === course.id);
   if (index !== -1) {
@@ -55,6 +81,10 @@ export const saveCourse = async (course: Course): Promise<void> => {
 };
 
 export const deleteCourse = async (courseId: string): Promise<void> => {
+  if (isCloudConnected()) {
+    await cloudFetch('deleteCourse', { courseId });
+  }
+
   const courses = await getCourses();
   const updated = courses.filter(c => c.id !== courseId);
   localStorage.setItem(COURSES_KEY, JSON.stringify(updated));
@@ -62,58 +92,56 @@ export const deleteCourse = async (courseId: string): Promise<void> => {
 
 // Settings Logic
 export const getPlatformSettings = async (): Promise<PlatformSettings> => {
+  let localSettings: Partial<PlatformSettings> | null = null;
   const local = localStorage.getItem(SETTINGS_KEY);
-  let settings: PlatformSettings | null = null;
   
   if (local) {
     try {
-      settings = JSON.parse(local);
+      localSettings = JSON.parse(local);
     } catch (e) {
       console.error("Local settings corrupt", e);
     }
   }
 
+  const mergedSettings: PlatformSettings = {
+    ...DEFAULT_SETTINGS,
+    ...localSettings
+  };
+
   if (isCloudConnected()) {
     const cloudData = await cloudFetch('getSettings');
     if (cloudData && typeof cloudData === 'object' && cloudData.upiId) {
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(cloudData));
-      return cloudData;
+      const finalSettings = { ...mergedSettings, ...cloudData };
+      localStorage.setItem(SETTINGS_KEY, JSON.stringify(finalSettings));
+      return finalSettings;
     }
   }
   
-  return settings || {
-    paymentQrCode: null,
-    upiId: 'shamanth@okaxis',
-    contactNumber: '+91 9902122531',
-    categories: ['React', 'Java', 'Python', 'AWS', 'Data Science'],
-    flashNews: [
-      'New Batch for Java Full Stack Development starting from July 25th, 2024. Register now for Early Bird Discount!',
-      'React 19 & Next.js 15 Masterclass is now live! Check out the free preview lessons.',
-      'AWS Certified Solutions Architect (SAA-C03) Offline Batch registrations open at Mathikere Branch.',
-      'Placement assistance program for 2023 & 2024 pass-outs initiated. Contact placement cell.'
-    ]
-  };
+  return mergedSettings;
 };
 
 export const savePlatformSettings = async (settings: PlatformSettings): Promise<void> => {
   try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
     if (isCloudConnected()) {
       await cloudFetch('saveSettings', { settings });
     }
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
   } catch (err) {
     console.error("❌ Failed to save settings:", err);
     throw err;
   }
 };
 
+// User Data Logic
 export const getStoredUsers = async (): Promise<User[]> => {
-  const cloudData = await cloudFetch('getAllUsers');
-  if (cloudData && Array.isArray(cloudData)) {
-    localStorage.setItem(USERS_KEY, JSON.stringify(cloudData));
-    return cloudData;
+  if (isCloudConnected()) {
+    const cloudData = await cloudFetch('getAllUsers');
+    if (cloudData && Array.isArray(cloudData)) {
+      localStorage.setItem(USERS_KEY, JSON.stringify(cloudData));
+      return cloudData;
+    }
   }
-  await delay(50);
+
   const users = localStorage.getItem(USERS_KEY);
   if (!users) {
     const admin: User = {
@@ -132,13 +160,11 @@ export const getStoredUsers = async (): Promise<User[]> => {
   return JSON.parse(users);
 };
 
-export const saveUsers = async (users: User[]): Promise<void> => {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-};
-
 export const registerUser = async (email: string, pin: string): Promise<User | null> => {
-  const cloudUser = await cloudFetch('register', { email, pin });
-  if (cloudUser) return cloudUser;
+  if (isCloudConnected()) {
+    return await cloudFetch('register', { email, pin });
+  }
+  
   const users = await getStoredUsers();
   if (users.find(u => u.email === email)) return null;
   const newUser: User = {
@@ -152,26 +178,31 @@ export const registerUser = async (email: string, pin: string): Promise<User | n
     lastActive: new Date().toISOString()
   };
   users.push(newUser);
-  await saveUsers(users);
+  localStorage.setItem(USERS_KEY, JSON.stringify(users));
   return newUser;
 };
 
 export const loginUser = async (email: string, pin: string): Promise<User | null> => {
-  const cloudUser = await cloudFetch('login', { email, pin });
-  if (cloudUser) return cloudUser;
+  if (isCloudConnected()) {
+    return await cloudFetch('login', { email, pin });
+  }
+
   const users = await getStoredUsers();
-  const userIndex = users.findIndex(u => u.email === email && u.pin === pin);
-  if (userIndex !== -1) {
-    users[userIndex].lastActive = new Date().toISOString();
-    await saveUsers(users);
-    return users[userIndex];
+  const user = users.find(u => u.email === email && u.pin === pin);
+  if (user) {
+    user.lastActive = new Date().toISOString();
+    localStorage.setItem(USERS_KEY, JSON.stringify(users));
+    return user;
   }
   return null;
 };
 
 export const requestUnlock = async (userId: string, courseId: string): Promise<void> => {
-  const cloudResult = await cloudFetch('requestUnlock', { userId, courseId });
-  if (cloudResult) return;
+  if (isCloudConnected()) {
+    await cloudFetch('requestUnlock', { userId, courseId });
+    return;
+  }
+
   const users = await getStoredUsers();
   const updated = users.map(u => {
     if (u.id === userId) {
@@ -181,12 +212,15 @@ export const requestUnlock = async (userId: string, courseId: string): Promise<v
     }
     return u;
   });
-  await saveUsers(updated);
+  localStorage.setItem(USERS_KEY, JSON.stringify(updated));
 };
 
 export const approveUnlock = async (userId: string, courseId: string): Promise<void> => {
-  const cloudResult = await cloudFetch('approveUnlock', { userId, courseId });
-  if (cloudResult) return;
+  if (isCloudConnected()) {
+    await cloudFetch('approveUnlock', { userId, courseId });
+    return;
+  }
+
   const users = await getStoredUsers();
   const updated = users.map(u => {
     if (u.id === userId) {
@@ -201,17 +235,20 @@ export const approveUnlock = async (userId: string, courseId: string): Promise<v
     }
     return u;
   });
-  await saveUsers(updated);
+  localStorage.setItem(USERS_KEY, JSON.stringify(updated));
 };
 
 export const lockCourse = async (userId: string, courseId: string): Promise<void> => {
-  const cloudResult = await cloudFetch('lockCourse', { userId, courseId });
-  if (cloudResult) return;
+  if (isCloudConnected()) {
+    await cloudFetch('lockCourse', { userId, courseId });
+    return;
+  }
+
   const users = await getStoredUsers();
   const updated = users.map(u => {
     if (u.id === userId) {
       const newDates = { ...u.enrollmentDates };
-      delete newDates[courseId];
+      if (newDates) delete newDates[courseId];
       return {
         ...u,
         enrolledCourses: u.enrolledCourses.filter(id => id !== courseId),
@@ -221,5 +258,5 @@ export const lockCourse = async (userId: string, courseId: string): Promise<void
     }
     return u;
   });
-  await saveUsers(updated);
+  localStorage.setItem(USERS_KEY, JSON.stringify(updated));
 };
