@@ -65,12 +65,16 @@ const CourseModal: React.FC<CourseModalProps> = ({ course, user, onClose, onAuth
       <div className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm" onClick={onClose}></div>
       
       <div className="bg-white rounded-[2.5rem] w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col md:flex-row shadow-2xl relative z-10 animate-in fade-in zoom-in duration-300">
-        <button onClick={onClose} className="absolute top-6 right-6 z-20 w-10 h-10 rounded-full bg-white/10 text-white hover:bg-white/30 backdrop-blur-md transition-colors flex items-center justify-center border border-white/20">
+        <button 
+          onClick={onClose} 
+          className="absolute top-6 right-6 z-20 w-10 h-10 rounded-full bg-white/10 text-white hover:bg-white/30 backdrop-blur-md transition-colors flex items-center justify-center border border-white/20"
+          title="Close Modal"
+        >
           <i className="fa-solid fa-xmark"></i>
         </button>
 
         {/* Player Section */}
-        <div className="md:w-2/3 bg-slate-950 flex flex-col justify-center min-h-[300px] relative">
+        <div className="md:w-2/3 bg-slate-950 flex flex-col justify-center min-h-[400px] relative">
           {isUnlocked ? (
             <div className="w-full aspect-video bg-black">
               {activeVideo ? (
@@ -80,78 +84,98 @@ const CourseModal: React.FC<CourseModalProps> = ({ course, user, onClose, onAuth
               )}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center p-8 text-white h-full bg-gradient-to-b from-indigo-950 to-slate-950">
+            <div className="flex flex-col items-center justify-center p-8 text-white h-full bg-gradient-to-b from-indigo-950 to-slate-950 overflow-y-auto">
               {showScanner ? (
-                <div className="text-center space-y-6 max-w-sm animate-in slide-in-from-bottom-4">
-                  <div className="bg-white p-6 rounded-3xl shadow-2xl inline-block relative min-w-[200px] min-h-[250px]">
+                <div className="text-center space-y-6 w-full max-w-sm animate-in slide-in-from-bottom-4 relative py-12">
+                  {/* Internal Close Button for Scanner view */}
+                  <button 
+                    onClick={() => setShowScanner(false)} 
+                    className="absolute -top-4 -right-4 md:-right-8 w-12 h-12 bg-white/5 hover:bg-white/20 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-all"
+                    title="Cancel Payment"
+                  >
+                    <i className="fa-solid fa-chevron-left text-sm mr-1"></i>
+                    <i className="fa-solid fa-xmark"></i>
+                  </button>
+
+                  <div className="bg-white p-6 rounded-[2.5rem] shadow-2xl inline-block relative min-w-[240px] w-full">
                     {isSettingsLoading ? (
-                      <div className="w-48 h-48 flex flex-col items-center justify-center text-indigo-900 gap-3">
+                      <div className="w-48 h-48 flex flex-col items-center justify-center text-indigo-900 gap-3 mx-auto">
                         <i className="fa-solid fa-circle-notch animate-spin text-3xl"></i>
-                        <span className="text-[10px] font-black uppercase tracking-widest">Loading Gateway...</span>
+                        <span className="text-[10px] font-black uppercase tracking-widest">Verifying Gateway...</span>
                       </div>
                     ) : (
                       <>
-                        <div className="w-48 h-48 bg-slate-100 rounded-xl flex items-center justify-center relative overflow-hidden">
+                        <div className="w-full aspect-square bg-slate-50 rounded-3xl flex items-center justify-center relative overflow-hidden border border-slate-100">
                           {settings?.paymentQrCode ? (
-                            <img src={settings.paymentQrCode} className="w-full h-full object-contain animate-in fade-in duration-700" alt="Payment QR" />
+                            <img src={settings.paymentQrCode} className="w-full h-full object-contain animate-in fade-in duration-700 p-2" alt="Payment QR" />
                           ) : (
-                            <>
-                              <i className="fa-solid fa-qrcode text-indigo-900 text-[10rem] opacity-10 absolute"></i>
-                              <div className="relative z-10 grid grid-cols-4 gap-2 p-4">
+                            <div className="relative w-full h-full flex items-center justify-center">
+                              <i className="fa-solid fa-qrcode text-indigo-900 text-[10rem] opacity-5 absolute"></i>
+                              <div className="relative z-10 grid grid-cols-4 gap-3 p-6">
                                 {Array.from({length: 16}).map((_, i) => (
-                                  <div key={i} className={`w-6 h-6 rounded-sm ${Math.random() > 0.4 ? 'bg-indigo-900' : 'bg-transparent'}`}></div>
+                                  <div key={i} className={`w-8 h-8 rounded-md ${Math.random() > 0.4 ? 'bg-indigo-900' : 'bg-slate-200'}`}></div>
                                 ))}
                               </div>
-                            </>
+                            </div>
                           )}
                         </div>
-                        <div className="mt-4 text-indigo-900 font-black text-lg">Scan to Pay ₹{course.price}</div>
-                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 italic">Merchant: {settings?.upiId || 'shamanth@okaxis'}</div>
+                        <div className="mt-6 text-indigo-950 font-black text-2xl tracking-tight italic">Scan to Pay ₹{course.price}</div>
+                        <div className="text-[10px] text-slate-400 font-black uppercase tracking-[0.2em] mt-2 mb-2">Merchant: {settings?.upiId || 'shamanth@okaxis'}</div>
                       </>
                     )}
                   </div>
                   
                   <div className="space-y-4 pt-4">
-                    <p className="text-indigo-200 text-xs font-medium leading-relaxed">
-                      After successful payment, click below to notify our administration team. Your course will be unlocked shortly.
+                    <p className="text-indigo-200/60 text-xs font-medium leading-relaxed px-4">
+                      Once payment is done, click "Notify Admin". Our team will unlock your access within minutes.
                     </p>
-                    <button 
-                      onClick={handleRequestUnlock}
-                      className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-2xl font-black shadow-xl shadow-emerald-500/20 transition-all active:scale-95 flex items-center justify-center gap-3"
-                    >
-                      <i className="fa-solid fa-circle-check"></i>
-                      I Have Paid - Notify Admin
-                    </button>
-                    <button onClick={() => setShowScanner(false)} className="text-slate-400 text-[10px] font-black uppercase tracking-widest hover:text-white transition-colors">Go Back</button>
+                    <div className="flex flex-col gap-3">
+                      <button 
+                        onClick={handleRequestUnlock}
+                        className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-2xl font-black shadow-xl shadow-emerald-500/20 transition-all active:scale-95 flex items-center justify-center gap-3"
+                      >
+                        <i className="fa-solid fa-paper-plane"></i>
+                        I Have Paid - Notify Admin
+                      </button>
+                      <button 
+                        onClick={() => setShowScanner(false)} 
+                        className="w-full py-4 bg-white/5 hover:bg-white/10 text-white/50 hover:text-white rounded-2xl font-black text-[10px] uppercase tracking-[0.3em] transition-all"
+                      >
+                        <i className="fa-solid fa-arrow-left mr-2"></i>
+                        Cancel & Go Back
+                      </button>
+                    </div>
                   </div>
                 </div>
               ) : (
                 <div className="text-center max-w-sm">
-                  <div className="w-20 h-20 bg-indigo-500/10 rounded-3xl flex items-center justify-center mb-6 mx-auto border border-indigo-500/20">
-                    <i className="fa-solid fa-lock text-3xl text-amber-400"></i>
+                  <div className="w-24 h-24 bg-indigo-500/10 rounded-[2rem] flex items-center justify-center mb-8 mx-auto border border-indigo-500/20 shadow-inner">
+                    <i className="fa-solid fa-lock text-4xl text-amber-400"></i>
                   </div>
-                  <h3 className="text-3xl font-black mb-2 tracking-tighter">Premium Access</h3>
-                  <p className="text-indigo-200/60 mb-8 font-medium">
-                    Unlock full access to {course.videos.length} high-quality lessons and materials for <span className="text-white font-bold">₹{course.price}</span>.
+                  <h3 className="text-4xl font-black mb-3 tracking-tighter">Premium Content</h3>
+                  <p className="text-indigo-200/60 mb-10 font-medium leading-relaxed">
+                    This specialized curriculum with {course.videos.length} expert modules is reserved for premium students. 
+                    Unlock it now for <span className="text-white font-black">₹{course.price}</span>.
                   </p>
                   {isPending ? (
-                    <div className="bg-amber-500/10 border border-amber-500/30 p-6 rounded-3xl text-amber-200 flex items-center gap-5 text-left animate-pulse">
-                      <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center text-xl shrink-0">
-                        <i className="fa-solid fa-bolt"></i>
+                    <div className="bg-amber-500/10 border border-amber-500/30 p-8 rounded-[2.5rem] text-amber-200 flex items-center gap-6 text-left animate-pulse shadow-2xl">
+                      <div className="w-14 h-14 bg-amber-500/20 rounded-2xl flex items-center justify-center text-2xl shrink-0">
+                        <i className="fa-solid fa-hourglass-half"></i>
                       </div>
                       <div>
-                        <div className="font-black text-xs uppercase tracking-widest">Admin will unlock in a minute</div>
-                        <div className="text-[10px] font-medium opacity-80 mt-1 italic">We are verifying your transaction. You will get instant access shortly.</div>
+                        <div className="font-black text-xs uppercase tracking-widest">Verification Pending</div>
+                        <div className="text-[10px] font-medium opacity-70 mt-1 italic leading-tight">We're confirming your transaction with the bank. Access will be granted shortly.</div>
                       </div>
                     </div>
                   ) : (
                     <button 
                       onClick={() => setShowScanner(true)}
-                      className="w-full bg-white text-indigo-950 py-4 rounded-2xl font-black shadow-2xl transition-all hover:-translate-y-1 active:scale-95"
+                      className="w-full bg-white text-indigo-950 py-5 rounded-[1.5rem] font-black shadow-2xl transition-all hover:-translate-y-1 active:scale-95 text-lg"
                     >
-                      Unlock for ₹{course.price}
+                      Unlock Full Access
                     </button>
                   )}
+                  <p className="mt-8 text-indigo-300/40 text-[10px] font-black uppercase tracking-widest">Secure Payment Processing</p>
                 </div>
               )}
             </div>
