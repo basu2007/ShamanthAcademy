@@ -13,74 +13,83 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
   const [email, setEmail] = useState('');
   const [pin, setPin] = useState('');
   const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setIsLoading(true);
 
-    if (isRegister) {
-      const user = await db.registerUser(email, pin);
-      if (user) {
-        onLogin(user);
+    try {
+      if (isRegister) {
+        const user = await db.registerUser(email, pin);
+        if (user) onLogin(user);
+        else setError('User already exists');
       } else {
-        setError('User already exists');
+        const user = await db.loginUser(email, pin);
+        if (user) onLogin(user);
+        else setError('Invalid email or PIN');
       }
-    } else {
-      const user = await db.loginUser(email, pin);
-      if (user) {
-        onLogin(user);
-      } else {
-        setError('Invalid credentials');
-      }
+    } catch (err) {
+      setError('Connection failure. Try again.');
+    } finally {
+      setIsLoading(false);
     }
   };
 
   return (
     <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
       <div 
-        className="absolute inset-0 bg-indigo-950/80 backdrop-blur-xl"
+        className="absolute inset-0 bg-indigo-950/80 backdrop-blur-md"
         onClick={onClose}
       ></div>
       
-      <div className="bg-white rounded-[2.5rem] w-full max-w-md p-10 shadow-2xl relative z-10 animate-in fade-in zoom-in slide-in-from-bottom-12 duration-500">
-        <div className="text-center mb-10">
-          <div className="w-20 h-20 bg-indigo-700 rounded-3xl flex items-center justify-center text-white text-3xl font-black mx-auto mb-6 shadow-2xl shadow-indigo-200 relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-5 h-5 bg-amber-400 rounded-bl-full"></div>
+      <div className="bg-white rounded-[2rem] w-full max-w-md p-8 md:p-10 shadow-2xl relative z-10 animate-in fade-in zoom-in slide-in-from-bottom-8 duration-300">
+        {/* Close Button - Added */}
+        <button 
+          onClick={onClose}
+          className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 flex items-center justify-center transition-all border border-slate-100"
+        >
+          <i className="fa-solid fa-xmark"></i>
+        </button>
+
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-indigo-700 rounded-2xl flex items-center justify-center text-white text-2xl font-black mx-auto mb-4 shadow-xl">
             SA
           </div>
-          <h2 className="text-3xl font-black text-gray-900 tracking-tighter">
-            {isRegister ? 'Join Our Academy' : 'Welcome Back'}
+          <h2 className="text-2xl font-black text-gray-900">
+            {isRegister ? 'New Student' : 'Student Portal'}
           </h2>
-          <p className="text-gray-500 mt-2 font-medium">
-            {isRegister ? 'Start your journey with Shamanth Academy' : 'Resume your professional growth'}
+          <p className="text-gray-400 text-xs mt-1 font-medium">
+            {isRegister ? 'Join our global academy today' : 'Continue your technical journey'}
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="space-y-1.5">
-            <label className="block text-sm font-black text-gray-700 uppercase tracking-widest px-1">Email Address</label>
+        <form onSubmit={handleSubmit} className="space-y-5">
+          <div className="space-y-1">
+            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Email Address</label>
             <div className="relative">
-              <i className="fa-solid fa-envelope absolute left-5 top-1/2 -translate-y-1/2 text-gray-400"></i>
+              <i className="fa-solid fa-envelope absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"></i>
               <input 
                 type="email" 
                 required
-                className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all font-medium"
-                placeholder="yours@example.com"
+                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-600 outline-none transition-all font-medium text-sm"
+                placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
               />
             </div>
           </div>
 
-          <div className="space-y-1.5">
-            <label className="block text-sm font-black text-gray-700 uppercase tracking-widest px-1">Access PIN</label>
+          <div className="space-y-1">
+            <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest px-1">Access PIN (4-Digit)</label>
             <div className="relative">
-              <i className="fa-solid fa-key absolute left-5 top-1/2 -translate-y-1/2 text-gray-400"></i>
+              <i className="fa-solid fa-key absolute left-4 top-1/2 -translate-y-1/2 text-slate-300"></i>
               <input 
                 type="password" 
                 required
                 maxLength={4}
-                className="w-full pl-14 pr-6 py-4 bg-gray-50 border border-gray-100 rounded-2xl focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-500 focus:bg-white outline-none transition-all font-medium tracking-widest"
+                className="w-full pl-10 pr-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:border-indigo-600 outline-none transition-all font-medium text-sm tracking-[0.5em]"
                 placeholder="••••"
                 value={pin}
                 onChange={(e) => setPin(e.target.value)}
@@ -88,24 +97,25 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
             </div>
           </div>
 
-          {error && <div className="text-red-500 text-sm font-bold bg-red-50 py-3 px-4 rounded-xl text-center animate-pulse border border-red-100">{error}</div>}
+          {error && <div className="text-red-500 text-[10px] font-black bg-red-50 py-2.5 px-4 rounded-lg text-center border border-red-100 uppercase tracking-wider">{error}</div>}
 
           <button 
             type="submit"
-            className="w-full bg-indigo-700 hover:bg-indigo-800 text-white font-black py-5 rounded-2xl transition-all shadow-2xl shadow-indigo-200 transform active:scale-[0.98] mt-2"
+            disabled={isLoading}
+            className="w-full bg-indigo-700 hover:bg-indigo-800 text-white font-black py-4 rounded-xl transition-all shadow-xl shadow-indigo-100 disabled:opacity-50 text-xs uppercase tracking-[0.2em]"
           >
-            {isRegister ? 'Create Account' : 'Sign In'}
+            {isLoading ? 'Verifying...' : (isRegister ? 'Create Account' : 'Authenticate')}
           </button>
         </form>
 
-        <div className="mt-10 pt-8 border-t border-gray-100 text-center">
-          <p className="text-gray-500 font-medium">
-            {isRegister ? 'Already an academic?' : "New to Shamanth Academy?"}
+        <div className="mt-8 pt-6 border-t border-slate-50 text-center">
+          <p className="text-slate-400 text-xs font-bold">
+            {isRegister ? 'Member already?' : "Not enrolled yet?"}
             <button 
-              onClick={() => setIsRegister(!isRegister)}
-              className="text-indigo-600 font-black ml-2 hover:underline tracking-tight"
+              onClick={() => { setIsRegister(!isRegister); setError(''); }}
+              className="text-indigo-600 font-black ml-2 hover:underline"
             >
-              {isRegister ? 'Log In' : 'Sign Up Now'}
+              {isRegister ? 'Log In' : 'Register'}
             </button>
           </p>
         </div>
