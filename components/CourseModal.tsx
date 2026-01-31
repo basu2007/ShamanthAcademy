@@ -60,6 +60,37 @@ const CourseModal: React.FC<CourseModalProps> = ({ course, user, onClose, onAuth
     }
   };
 
+  const renderVideoPlayer = () => {
+    if (!activeVideo) return <div className="flex items-center justify-center h-full text-gray-500 font-bold">No Media Found</div>;
+
+    const isYouTube = activeVideo.url.includes('youtube.com') || activeVideo.url.includes('youtu.be');
+
+    if (isYouTube) {
+      let videoId = '';
+      if (activeVideo.url.includes('v=')) {
+        videoId = activeVideo.url.split('v=')[1].split('&')[0];
+      } else if (activeVideo.url.includes('youtu.be/')) {
+        videoId = activeVideo.url.split('youtu.be/')[1].split('?')[0];
+      } else if (activeVideo.url.includes('embed/')) {
+        videoId = activeVideo.url.split('embed/')[1].split('?')[0];
+      }
+
+      return (
+        <iframe 
+          src={`https://www.youtube.com/embed/${videoId}?autoplay=1`} 
+          className="w-full h-full" 
+          frameBorder="0" 
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+          allowFullScreen
+        ></iframe>
+      );
+    }
+
+    return (
+      <video key={activeVideo.id} src={activeVideo.url} controls className="w-full h-full" autoPlay />
+    );
+  };
+
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm" onClick={onClose}></div>
@@ -77,17 +108,12 @@ const CourseModal: React.FC<CourseModalProps> = ({ course, user, onClose, onAuth
         <div className="md:w-2/3 bg-slate-950 flex flex-col justify-center min-h-[400px] relative">
           {isUnlocked ? (
             <div className="w-full aspect-video bg-black">
-              {activeVideo ? (
-                <video key={activeVideo.id} src={activeVideo.url} controls className="w-full h-full" autoPlay />
-              ) : (
-                <div className="flex items-center justify-center h-full text-gray-500 font-bold">No Media Found</div>
-              )}
+              {renderVideoPlayer()}
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center p-8 text-white h-full bg-gradient-to-b from-indigo-950 to-slate-950 overflow-y-auto">
               {showScanner ? (
                 <div className="text-center space-y-6 w-full max-w-sm animate-in slide-in-from-bottom-4 relative py-12">
-                  {/* Internal Close Button for Scanner view */}
                   <button 
                     onClick={() => setShowScanner(false)} 
                     className="absolute -top-4 -right-4 md:-right-8 w-12 h-12 bg-white/5 hover:bg-white/20 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-all"
@@ -126,9 +152,6 @@ const CourseModal: React.FC<CourseModalProps> = ({ course, user, onClose, onAuth
                   </div>
                   
                   <div className="space-y-4 pt-4">
-                    <p className="text-indigo-200/60 text-xs font-medium leading-relaxed px-4">
-                      Once payment is done, click "Notify Admin". Our team will unlock your access within minutes.
-                    </p>
                     <div className="flex flex-col gap-3">
                       <button 
                         onClick={handleRequestUnlock}
@@ -154,8 +177,7 @@ const CourseModal: React.FC<CourseModalProps> = ({ course, user, onClose, onAuth
                   </div>
                   <h3 className="text-4xl font-black mb-3 tracking-tighter">Premium Content</h3>
                   <p className="text-indigo-200/60 mb-10 font-medium leading-relaxed">
-                    This specialized curriculum with {course.videos.length} expert modules is reserved for premium students. 
-                    Unlock it now for <span className="text-white font-black">₹{course.price}</span>.
+                    Unlock this full curriculum for <span className="text-white font-black">₹{course.price}</span>.
                   </p>
                   {isPending ? (
                     <div className="bg-amber-500/10 border border-amber-500/30 p-8 rounded-[2.5rem] text-amber-200 flex items-center gap-6 text-left animate-pulse shadow-2xl">
@@ -164,7 +186,7 @@ const CourseModal: React.FC<CourseModalProps> = ({ course, user, onClose, onAuth
                       </div>
                       <div>
                         <div className="font-black text-xs uppercase tracking-widest">Verification Pending</div>
-                        <div className="text-[10px] font-medium opacity-70 mt-1 italic leading-tight">We're confirming your transaction with the bank. Access will be granted shortly.</div>
+                        <div className="text-[10px] font-medium opacity-70 mt-1 italic leading-tight">Access will be granted once admin verifies payment.</div>
                       </div>
                     </div>
                   ) : (
@@ -175,7 +197,6 @@ const CourseModal: React.FC<CourseModalProps> = ({ course, user, onClose, onAuth
                       Unlock Full Access
                     </button>
                   )}
-                  <p className="mt-8 text-indigo-300/40 text-[10px] font-black uppercase tracking-widest">Secure Payment Processing</p>
                 </div>
               )}
             </div>

@@ -1,9 +1,10 @@
 
-import { User, PlatformSettings } from '../types';
-import { ADMIN_CREDENTIALS } from '../constants';
+import { User, PlatformSettings, Course } from '../types';
+import { ADMIN_CREDENTIALS, MOCK_COURSES } from '../constants';
 
 const USERS_KEY = 'shamanth_academy_users_v1';
 const SETTINGS_KEY = 'shamanth_academy_settings_v1';
+const COURSES_KEY = 'shamanth_academy_courses_v1';
 
 const REMOTE_API_URL = "INSERT_AWS_API_URL_HERE";
 
@@ -31,6 +32,34 @@ async function cloudFetch(action: string, body: any = {}) {
   }
 }
 
+// Course Catalog Logic
+export const getCourses = async (): Promise<Course[]> => {
+  const local = localStorage.getItem(COURSES_KEY);
+  if (!local) {
+    // Initialize with mock courses if empty
+    localStorage.setItem(COURSES_KEY, JSON.stringify(MOCK_COURSES));
+    return MOCK_COURSES;
+  }
+  return JSON.parse(local);
+};
+
+export const saveCourse = async (course: Course): Promise<void> => {
+  const courses = await getCourses();
+  const index = courses.findIndex(c => c.id === course.id);
+  if (index !== -1) {
+    courses[index] = course;
+  } else {
+    courses.push(course);
+  }
+  localStorage.setItem(COURSES_KEY, JSON.stringify(courses));
+};
+
+export const deleteCourse = async (courseId: string): Promise<void> => {
+  const courses = await getCourses();
+  const updated = courses.filter(c => c.id !== courseId);
+  localStorage.setItem(COURSES_KEY, JSON.stringify(updated));
+};
+
 // Settings Logic
 export const getPlatformSettings = async (): Promise<PlatformSettings> => {
   const local = localStorage.getItem(SETTINGS_KEY);
@@ -55,7 +84,14 @@ export const getPlatformSettings = async (): Promise<PlatformSettings> => {
   return settings || {
     paymentQrCode: null,
     upiId: 'shamanth@okaxis',
-    contactNumber: '+91 9902122531'
+    contactNumber: '+91 9902122531',
+    categories: ['React', 'Java', 'Python', 'AWS', 'Data Science'],
+    flashNews: [
+      'New Batch for Java Full Stack Development starting from July 25th, 2024. Register now for Early Bird Discount!',
+      'React 19 & Next.js 15 Masterclass is now live! Check out the free preview lessons.',
+      'AWS Certified Solutions Architect (SAA-C03) Offline Batch registrations open at Mathikere Branch.',
+      'Placement assistance program for 2023 & 2024 pass-outs initiated. Contact placement cell.'
+    ]
   };
 };
 

@@ -16,6 +16,8 @@ export interface PlatformSettings {
   paymentQrCode: string | null; // Base64 string of the QR code
   upiId: string;
   contactNumber: string;
+  flashNews: string[]; // Manageable list of news strings
+  categories: string[]; // Dynamically managed categories
 }
 
 export interface Video {

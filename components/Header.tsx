@@ -12,6 +12,7 @@ interface HeaderProps {
   onNavigate: (topic: InfoTopic) => void;
   searchQuery: string;
   setSearchQuery: (val: string) => void;
+  flashNews?: string[]; // Dynamic news from admin
 }
 
 const Header: React.FC<HeaderProps> = ({ 
@@ -22,7 +23,8 @@ const Header: React.FC<HeaderProps> = ({
   onHomeClick,
   onNavigate,
   searchQuery,
-  setSearchQuery
+  setSearchQuery,
+  flashNews = []
 }) => {
   return (
     <div className="flex flex-col w-full sticky top-0 z-50 shadow-xl">
@@ -112,31 +114,30 @@ const Header: React.FC<HeaderProps> = ({
       </header>
 
       {/* Flash News Marquee */}
-      <div className="bg-amber-50 border-b border-amber-100 py-2 overflow-hidden flex items-center">
-        <div className="bg-amber-500 text-white text-[10px] font-black uppercase px-4 py-1.5 rounded-r-full shadow-lg z-10 flex-shrink-0 animate-pulse">
-          <i className="fa-solid fa-bolt mr-2"></i>Flash News
-        </div>
-        <div className="flex-grow overflow-hidden whitespace-nowrap relative">
-          <div className="inline-block animate-marquee hover:pause text-[11px] sm:text-xs font-bold text-amber-900">
-            <span className="mx-12 flex items-center gap-3">
-              <span className="w-2 h-2 rounded-full bg-amber-500"></span> 
-              New Batch for Java Full Stack Development starting from July 25th, 2024. Register now for Early Bird Discount!
-            </span>
-            <span className="mx-12 flex items-center gap-3">
-              <span className="w-2 h-2 rounded-full bg-amber-500"></span> 
-              React 19 & Next.js 15 Masterclass is now live! Check out the free preview lessons.
-            </span>
-            <span className="mx-12 flex items-center gap-3">
-              <span className="w-2 h-2 rounded-full bg-amber-500"></span> 
-              AWS Certified Solutions Architect (SAA-C03) Offline Batch registrations open at Mathikere Branch.
-            </span>
-            <span className="mx-12 flex items-center gap-3">
-              <span className="w-2 h-2 rounded-full bg-amber-500"></span> 
-              Placement assistance program for 2023 & 2024 pass-outs initiated. Contact placement cell.
-            </span>
+      {flashNews.length > 0 && (
+        <div className="bg-amber-50 border-b border-amber-100 py-2 overflow-hidden flex items-center">
+          <div className="bg-amber-500 text-white text-[10px] font-black uppercase px-4 py-1.5 rounded-r-full shadow-lg z-10 flex-shrink-0 animate-pulse">
+            <i className="fa-solid fa-bolt mr-2"></i>Flash News
+          </div>
+          <div className="flex-grow overflow-hidden whitespace-nowrap relative">
+            <div className="inline-block animate-marquee hover:pause text-[11px] sm:text-xs font-bold text-amber-900">
+              {flashNews.map((news, idx) => (
+                <span key={idx} className="mx-12 flex items-center gap-3">
+                  <span className="w-2 h-2 rounded-full bg-amber-500"></span> 
+                  {news}
+                </span>
+              ))}
+              {/* Duplicate for seamless looping if short */}
+              {flashNews.length < 3 && flashNews.map((news, idx) => (
+                <span key={`dup-${idx}`} className="mx-12 flex items-center gap-3">
+                  <span className="w-2 h-2 rounded-full bg-amber-500"></span> 
+                  {news}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
-      </div>
+      )}
 
       <style>{`
         @keyframes marquee {

@@ -1,6 +1,6 @@
+
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { User, Course, AuthState } from './types.ts';
-import { MOCK_COURSES, CATEGORIES } from './constants.tsx';
+import { User, Course, AuthState, PlatformSettings } from './types.ts';
 import * as db from './services/db.ts';
 
 // Components
@@ -17,18 +17,33 @@ type AppView = 'home' | 'admin' | 'info';
 
 const App: React.FC = () => {
   const [auth, setAuth] = useState<AuthState>({ user: null, isAuthenticated: false });
+  const [courses, setCourses] = useState<Course[]>([]);
+  const [settings, setSettings] = useState<PlatformSettings | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('All');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCourse, setActiveCourse] = useState<Course | null>(null);
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [currentView, setCurrentView] = useState<AppView>('home');
   const [activeInfoTopic, setActiveInfoTopic] = useState<InfoTopic | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   
-  // Ref for scrolling to the courses section
   const coursesRef = useRef<HTMLDivElement>(null);
 
+  const refreshCourseData = useCallback(async () => {
+    const courseData = await db.getCourses();
+    setCourses(courseData);
+  }, []);
+
+  const refreshSettings = useCallback(async () => {
+    const settingsData = await db.getPlatformSettings();
+    setSettings(settingsData);
+  }, []);
+
   useEffect(() => {
-    const checkAuth = async () => {
+    const initApp = async () => {
+      setIsLoading(true);
+      
+      // Load session
       const saved = localStorage.getItem('active_session');
       if (saved) {
         try {
@@ -42,9 +57,21 @@ const App: React.FC = () => {
           console.error("Session recovery failed", e);
         }
       }
+
+      await refreshCourseData();
+      await refreshSettings();
+      setIsLoading(false);
     };
-    checkAuth();
-  }, []);
+    initApp();
+  }, [refreshCourseData, refreshSettings]);
+
+  // Re-fetch courses whenever we navigate back to home to ensure admin changes are visible
+  useEffect(() => {
+    if (currentView === 'home') {
+      refreshCourseData();
+      refreshSettings();
+    }
+  }, [currentView, refreshCourseData, refreshSettings]);
 
   const handleLogin = (user: User) => {
     setAuth({ user, isAuthenticated: true });
@@ -76,7 +103,7 @@ const App: React.FC = () => {
     }
   };
 
-  const filteredCourses = MOCK_COURSES.filter(course => {
+  const filteredCourses = courses.filter(course => {
     const matchesCategory = selectedCategory === 'All' || course.category === selectedCategory;
     const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
                           course.description.toLowerCase().includes(searchQuery.toLowerCase());
@@ -93,6 +120,9 @@ const App: React.FC = () => {
     }
   }, [auth.user]);
 
+  // Derive categories for filter bar (Always include 'All')
+  const availableCategories = ['All', ...(settings?.categories || [])];
+
   return (
     <div className="min-h-screen flex flex-col bg-slate-50">
       <Header 
@@ -107,6 +137,7 @@ const App: React.FC = () => {
         onNavigate={navigateToInfo}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
+        flashNews={settings?.flashNews}
       />
 
       <main className="flex-grow container mx-auto px-4 py-8">
@@ -116,7 +147,6 @@ const App: React.FC = () => {
           <InfoView topic={activeInfoTopic} onBack={() => setCurrentView('home')} />
         ) : (
           <>
-            {/* Multi-Banner Hero Section */}
             {!searchQuery && (
               <HeroCarousel 
                 onStartLearning={handleStartLearning} 
@@ -124,11 +154,9 @@ const App: React.FC = () => {
               />
             )}
 
-            {/* Content Anchor */}
             <div ref={coursesRef} className="scroll-mt-24">
-              {/* Categories */}
               <div className="flex flex-wrap gap-3 mb-10 justify-center sm:justify-start">
-                {CATEGORIES.map(cat => (
+                {availableCategories.map(cat => (
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
@@ -143,24 +171,29 @@ const App: React.FC = () => {
                 ))}
               </div>
 
-              {/* Course Grid */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-20">
-                {filteredCourses.length > 0 ? (
-                  filteredCourses.map(course => (
-                    <CourseCard 
-                      key={course.id} 
-                      course={course} 
-                      user={auth.user}
-                      onClick={() => setActiveCourse(course)}
-                    />
-                  ))
-                ) : (
-                  <div className="col-span-full py-20 text-center">
-                    <i className="fa-solid fa-face-frown text-5xl text-gray-200 mb-4"></i>
-                    <h3 className="text-xl font-bold text-gray-400">No courses found matching your quest.</h3>
-                  </div>
-                )}
-              </div>
+              {isLoading ? (
+                <div className="py-20 text-center">
+                   <i className="fa-solid fa-circle-notch animate-spin text-4xl text-indigo-600"></i>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-20">
+                  {filteredCourses.length > 0 ? (
+                    filteredCourses.map(course => (
+                      <CourseCard 
+                        key={course.id} 
+                        course={course} 
+                        user={auth.user}
+                        onClick={() => setActiveCourse(course)}
+                      />
+                    ))
+                  ) : (
+                    <div className="col-span-full py-20 text-center">
+                      <i className="fa-solid fa-face-frown text-5xl text-gray-200 mb-4"></i>
+                      <h3 className="text-xl font-bold text-gray-400">No courses found matching your quest.</h3>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </>
         )}
