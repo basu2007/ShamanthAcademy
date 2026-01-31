@@ -23,15 +23,22 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
     try {
       if (isRegister) {
         const user = await db.registerUser(email, pin);
-        if (user) onLogin(user);
-        else setError('User already exists');
+        if (user) {
+          onLogin(user);
+        } else {
+          setError('Email already registered');
+        }
       } else {
         const user = await db.loginUser(email, pin);
-        if (user) onLogin(user);
-        else setError('Invalid email or PIN');
+        if (user) {
+          onLogin(user);
+        } else {
+          setError('Invalid email or access PIN');
+        }
       }
-    } catch (err) {
-      setError('Connection failure. Try again.');
+    } catch (err: any) {
+      console.error(err);
+      setError(err.message || 'Connection failure. Try again.');
     } finally {
       setIsLoading(false);
     }
@@ -45,12 +52,14 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
       ></div>
       
       <div className="bg-white rounded-[2rem] w-full max-w-md p-8 md:p-10 shadow-2xl relative z-10 animate-in fade-in zoom-in slide-in-from-bottom-8 duration-300">
-        {/* Close Button - Added */}
+        {/* Close Button */}
         <button 
+          type="button"
           onClick={onClose}
-          className="absolute top-5 right-5 w-8 h-8 rounded-full bg-slate-50 text-slate-400 hover:bg-slate-100 hover:text-slate-600 flex items-center justify-center transition-all border border-slate-100"
+          className="absolute top-6 right-6 w-10 h-10 rounded-full bg-slate-50 text-slate-400 hover:bg-red-50 hover:text-red-500 flex items-center justify-center transition-all border border-slate-100 group z-20"
+          aria-label="Close"
         >
-          <i className="fa-solid fa-xmark"></i>
+          <i className="fa-solid fa-xmark text-lg group-hover:scale-110"></i>
         </button>
 
         <div className="text-center mb-8">
@@ -97,14 +106,23 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
             </div>
           </div>
 
-          {error && <div className="text-red-500 text-[10px] font-black bg-red-50 py-2.5 px-4 rounded-lg text-center border border-red-100 uppercase tracking-wider">{error}</div>}
+          {error && (
+            <div className="text-red-500 text-[10px] font-black bg-red-50 py-3 px-4 rounded-xl text-center border border-red-100 uppercase tracking-wider flex items-center justify-center gap-2">
+              <i className="fa-solid fa-circle-exclamation"></i>
+              {error}
+            </div>
+          )}
 
           <button 
             type="submit"
             disabled={isLoading}
             className="w-full bg-indigo-700 hover:bg-indigo-800 text-white font-black py-4 rounded-xl transition-all shadow-xl shadow-indigo-100 disabled:opacity-50 text-xs uppercase tracking-[0.2em]"
           >
-            {isLoading ? 'Verifying...' : (isRegister ? 'Create Account' : 'Authenticate')}
+            {isLoading ? (
+              <span className="flex items-center justify-center gap-2">
+                <i className="fa-solid fa-circle-notch animate-spin"></i> Processing...
+              </span>
+            ) : (isRegister ? 'Create Account' : 'Authenticate')}
           </button>
         </form>
 
@@ -112,6 +130,7 @@ const AuthModal: React.FC<AuthModalProps> = ({ onClose, onLogin }) => {
           <p className="text-slate-400 text-xs font-bold">
             {isRegister ? 'Member already?' : "Not enrolled yet?"}
             <button 
+              type="button"
               onClick={() => { setIsRegister(!isRegister); setError(''); }}
               className="text-indigo-600 font-black ml-2 hover:underline"
             >

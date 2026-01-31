@@ -28,7 +28,6 @@ exports.handler = async (event) => {
         const { action } = body;
         
         switch (action) {
-            // --- SETTINGS OPERATIONS ---
             case 'getSettings': {
                 const { Item } = await docClient.send(new GetCommand({ 
                     TableName: TABLE_NAME, 
@@ -37,7 +36,6 @@ exports.handler = async (event) => {
                 return response(200, Item || {
                     id: SETTINGS_ID,
                     type: 'SETTINGS',
-                    paymentQrCode: null,
                     upiId: 'shamanth@okaxis',
                     contactNumber: '+91 9902122531',
                     categories: ['React', 'Java', 'Python', 'AWS', 'Data Science'],
@@ -52,19 +50,12 @@ exports.handler = async (event) => {
                     type: 'SETTINGS',
                     updatedAt: new Date().toISOString()
                 };
-                await docClient.send(new PutCommand({ 
-                    TableName: TABLE_NAME, 
-                    Item: settingsItem 
-                }));
+                await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: settingsItem }));
                 return response(200, { success: true });
             }
 
-            // --- COURSE CATALOG OPERATIONS ---
             case 'getCourses': {
-                const data = await docClient.send(new ScanCommand({ 
-                    TableName: TABLE_NAME 
-                }));
-                // Return only items marked as type 'COURSE'
+                const data = await docClient.send(new ScanCommand({ TableName: TABLE_NAME }));
                 const courses = data.Items.filter(item => item.type === 'COURSE');
                 return response(200, courses);
             }
@@ -75,22 +66,15 @@ exports.handler = async (event) => {
                     type: 'COURSE',
                     updatedAt: new Date().toISOString()
                 };
-                await docClient.send(new PutCommand({ 
-                    TableName: TABLE_NAME, 
-                    Item: courseItem 
-                }));
+                await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: courseItem }));
                 return response(200, { success: true });
             }
 
             case 'deleteCourse': {
-                await docClient.send(new DeleteCommand({ 
-                    TableName: TABLE_NAME, 
-                    Key: { id: body.courseId } 
-                }));
+                await docClient.send(new DeleteCommand({ TableName: TABLE_NAME, Key: { id: body.courseId } }));
                 return response(200, { success: true });
             }
 
-            // --- USER & AUTH OPERATIONS ---
             case 'getAllUsers': {
                 const data = await docClient.send(new ScanCommand({ TableName: TABLE_NAME }));
                 const usersOnly = data.Items.filter(item => item.type === 'USER');
@@ -98,6 +82,14 @@ exports.handler = async (event) => {
             }
                 
             case 'register': {
+                // Check if user already exists in cloud
+                const scanData = await docClient.send(new ScanCommand({ TableName: TABLE_NAME }));
+                const existing = scanData.Items.find(u => u.type === 'USER' && u.email === body.email);
+                
+                if (existing) {
+                    return response(409, { error: "User already exists" });
+                }
+
                 const newUser = {
                     id: Date.now().toString(),
                     type: 'USER',
@@ -115,7 +107,7 @@ exports.handler = async (event) => {
 
             case 'login': {
                 const scanData = await docClient.send(new ScanCommand({ TableName: TABLE_NAME }));
-                const user = scanData.Items.find(u => u.email === body.email && u.pin === body.pin && u.type === 'USER');
+                const user = scanData.Items.find(u => u.type === 'USER' && u.email === body.email && u.pin === body.pin);
                 if (user) {
                     user.lastActive = new Date().toISOString();
                     await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: user }));
@@ -125,10 +117,7 @@ exports.handler = async (event) => {
             }
 
             case 'deleteUser': {
-                await docClient.send(new DeleteCommand({ 
-                    TableName: TABLE_NAME, 
-                    Key: { id: body.userId } 
-                }));
+                await docClient.send(new DeleteCommand({ TableName: TABLE_NAME, Key: { id: body.userId } }));
                 return response(200, { success: true });
             }
 

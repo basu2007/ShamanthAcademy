@@ -34,36 +34,41 @@ async function cloudFetch(action: string, body: any = {}) {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action, ...body })
     });
-    if (!response.ok) throw new Error(`Status: ${response.status}`);
-    return await response.json();
-  } catch (error) {
+    
+    const data = await response.json();
+    if (!response.ok) {
+      // Create a specialized error object
+      const err: any = new Error(data.error || 'Server error');
+      err.status = response.status;
+      throw err;
+    }
+    return data;
+  } catch (error: any) {
     console.error(`❌ Cloud Sync Error (${action}):`, error);
-    return null;
+    throw error; // Rethrow to let the caller handle UI messaging
   }
 }
 
+// Course Catalog Logic
 export const getCourses = async (): Promise<Course[]> => {
   if (isCloudConnected()) {
-    const cloudCourses = await cloudFetch('getCourses');
-    if (cloudCourses && Array.isArray(cloudCourses)) {
-      localStorage.setItem(COURSES_KEY, JSON.stringify(cloudCourses));
-      return cloudCourses;
-    }
+    try {
+      const cloudCourses = await cloudFetch('getCourses');
+      if (cloudCourses && Array.isArray(cloudCourses)) {
+        localStorage.setItem(COURSES_KEY, JSON.stringify(cloudCourses));
+        return cloudCourses;
+      }
+    } catch (e) {}
   }
   const local = localStorage.getItem(COURSES_KEY);
-  if (!local) {
-    localStorage.setItem(COURSES_KEY, JSON.stringify(MOCK_COURSES));
-    return MOCK_COURSES;
-  }
-  return JSON.parse(local);
+  return local ? JSON.parse(local) : MOCK_COURSES;
 };
 
 export const saveCourse = async (course: Course): Promise<void> => {
   if (isCloudConnected()) await cloudFetch('saveCourse', { course });
   const courses = await getCourses();
   const index = courses.findIndex(c => c.id === course.id);
-  if (index !== -1) courses[index] = course;
-  else courses.push(course);
+  if (index !== -1) courses[index] = course; else courses.push(course);
   localStorage.setItem(COURSES_KEY, JSON.stringify(courses));
 };
 
@@ -73,20 +78,19 @@ export const deleteCourse = async (courseId: string): Promise<void> => {
   localStorage.setItem(COURSES_KEY, JSON.stringify(courses.filter(c => c.id !== courseId)));
 };
 
+// Settings Logic
 export const getPlatformSettings = async (): Promise<PlatformSettings> => {
-  let localSettings: Partial<PlatformSettings> | null = null;
-  const local = localStorage.getItem(SETTINGS_KEY);
-  if (local) try { localSettings = JSON.parse(local); } catch (e) {}
-  const mergedSettings: PlatformSettings = { ...DEFAULT_SETTINGS, ...localSettings };
   if (isCloudConnected()) {
-    const cloudData = await cloudFetch('getSettings');
-    if (cloudData && typeof cloudData === 'object' && cloudData.upiId) {
-      const finalSettings = { ...mergedSettings, ...cloudData };
-      localStorage.setItem(SETTINGS_KEY, JSON.stringify(finalSettings));
-      return finalSettings;
-    }
+    try {
+      const cloudData = await cloudFetch('getSettings');
+      if (cloudData && typeof cloudData === 'object' && cloudData.upiId) {
+        localStorage.setItem(SETTINGS_KEY, JSON.stringify(cloudData));
+        return { ...DEFAULT_SETTINGS, ...cloudData };
+      }
+    } catch (e) {}
   }
-  return mergedSettings;
+  const local = localStorage.getItem(SETTINGS_KEY);
+  return local ? { ...DEFAULT_SETTINGS, ...JSON.parse(local) } : DEFAULT_SETTINGS;
 };
 
 export const savePlatformSettings = async (settings: PlatformSettings): Promise<void> => {
@@ -94,39 +98,38 @@ export const savePlatformSettings = async (settings: PlatformSettings): Promise<
   localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
 };
 
+// User Logic
 export const getStoredUsers = async (): Promise<User[]> => {
   if (isCloudConnected()) {
-    const cloudData = await cloudFetch('getAllUsers');
-    if (cloudData && Array.isArray(cloudData)) {
-      localStorage.setItem(USERS_KEY, JSON.stringify(cloudData));
-      return cloudData;
-    }
+    try {
+      const cloudData = await cloudFetch('getAllUsers');
+      if (cloudData && Array.isArray(cloudData)) {
+        localStorage.setItem(USERS_KEY, JSON.stringify(cloudData));
+        return cloudData;
+      }
+    } catch (e) {}
   }
   const users = localStorage.getItem(USERS_KEY);
-  if (!users) {
-    const admin: User = {
-      id: 'admin',
-      email: ADMIN_CREDENTIALS.email,
-      pin: ADMIN_CREDENTIALS.pin,
-      role: 'ADMIN',
-      enrolledCourses: [],
-      pendingUnlocks: [],
-      lastActive: new Date().toISOString()
-    };
-    const initial = [admin];
-    localStorage.setItem(USERS_KEY, JSON.stringify(initial));
-    return initial;
-  }
-  return JSON.parse(users);
+  return users ? JSON.parse(users) : [];
 };
 
 export const registerUser = async (email: string, pin: string): Promise<User | null> => {
-  if (isCloudConnected()) return await cloudFetch('register', { email, pin });
+  if (isCloudConnected()) {
+    try {
+      const user = await cloudFetch('register', { email, pin });
+      // Invalidate local cache to force a refresh on next read
+      localStorage.removeItem(USERS_KEY);
+      return user;
+    } catch (err: any) {
+      if (err.status === 409) return null; // Signal that user exists
+      throw err;
+    }
+  }
+  
   const users = await getStoredUsers();
   if (users.find(u => u.email === email)) return null;
   const newUser: User = {
-    id: Math.random().toString(36).substr(2, 9),
-    email, pin, role: 'USER', enrolledCourses: [], pendingUnlocks: [], enrollmentDates: {}, lastActive: new Date().toISOString()
+    id: Date.now().toString(), email, pin, role: 'USER', enrolledCourses: [], pendingUnlocks: [], enrollmentDates: {}, lastActive: new Date().toISOString()
   };
   users.push(newUser);
   localStorage.setItem(USERS_KEY, JSON.stringify(users));
@@ -134,28 +137,26 @@ export const registerUser = async (email: string, pin: string): Promise<User | n
 };
 
 export const loginUser = async (email: string, pin: string): Promise<User | null> => {
-  // Master Admin Check - Explicitly check static credentials first
+  // 1. MASTER ADMIN CHECK (Always works, bypasses cloud if needed)
   if (email.trim().toLowerCase() === ADMIN_CREDENTIALS.email.toLowerCase() && pin.trim() === ADMIN_CREDENTIALS.pin) {
     return {
-      id: 'admin',
-      email: ADMIN_CREDENTIALS.email,
-      pin: ADMIN_CREDENTIALS.pin,
-      role: 'ADMIN',
-      enrolledCourses: [],
-      pendingUnlocks: [],
-      lastActive: new Date().toISOString()
+      id: 'admin', email: ADMIN_CREDENTIALS.email, pin: ADMIN_CREDENTIALS.pin,
+      role: 'ADMIN', enrolledCourses: [], pendingUnlocks: [], lastActive: new Date().toISOString()
     };
   }
 
-  if (isCloudConnected()) return await cloudFetch('login', { email, pin });
-  const users = await getStoredUsers();
-  const user = users.find(u => u.email === email && u.pin === pin);
-  if (user) {
-    user.lastActive = new Date().toISOString();
-    localStorage.setItem(USERS_KEY, JSON.stringify(users));
-    return user;
+  // 2. CLOUD LOGIN
+  if (isCloudConnected()) {
+    try {
+      return await cloudFetch('login', { email, pin });
+    } catch (e) {
+      // Fallback only if server is unreachable
+    }
   }
-  return null;
+
+  // 3. LOCAL FALLBACK
+  const users = await getStoredUsers();
+  return users.find(u => u.email === email && u.pin === pin) || null;
 };
 
 export const deleteUser = async (userId: string): Promise<void> => {
@@ -163,8 +164,7 @@ export const deleteUser = async (userId: string): Promise<void> => {
     await cloudFetch('deleteUser', { userId });
   }
   const users = await getStoredUsers();
-  const updated = users.filter(u => u.id !== userId);
-  localStorage.setItem(USERS_KEY, JSON.stringify(updated));
+  localStorage.setItem(USERS_KEY, JSON.stringify(users.filter(u => u.id !== userId)));
 };
 
 export const requestUnlock = async (userId: string, courseId: string): Promise<void> => {
