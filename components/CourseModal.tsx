@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
-import { Course, User, Video } from '../types';
+
+import React, { useState, useEffect } from 'react';
+import { Course, User, Video, PlatformSettings } from '../types';
 import * as db from '../services/db';
 import { generateCourseRoadmap } from '../services/ai';
 
@@ -16,17 +17,33 @@ const CourseModal: React.FC<CourseModalProps> = ({ course, user, onClose, onAuth
   const isPending = user?.pendingUnlocks.includes(course.id);
   const [activeVideo, setActiveVideo] = useState<Video | null>(course.videos[0] || null);
   const [showScanner, setShowScanner] = useState(false);
+  const [settings, setSettings] = useState<PlatformSettings | null>(null);
+  const [isSettingsLoading, setIsSettingsLoading] = useState(true);
   
-  // AI State
   const [aiRoadmap, setAiRoadmap] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
 
-  const handleRequestUnlock = () => {
+  useEffect(() => {
+    const fetchSettings = async () => {
+      setIsSettingsLoading(true);
+      try {
+        const data = await db.getPlatformSettings();
+        setSettings(data);
+      } catch (err) {
+        console.error("Failed to load settings in modal", err);
+      } finally {
+        setIsSettingsLoading(false);
+      }
+    };
+    fetchSettings();
+  }, []);
+
+  const handleRequestUnlock = async () => {
     if (!user) {
       onAuthRequired();
       return;
     }
-    db.requestUnlock(user.id, course.id);
+    await db.requestUnlock(user.id, course.id);
     setShowScanner(false);
     onRefreshUser();
   };
@@ -45,86 +62,94 @@ const CourseModal: React.FC<CourseModalProps> = ({ course, user, onClose, onAuth
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div 
-        className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm"
-        onClick={onClose}
-      ></div>
+      <div className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm" onClick={onClose}></div>
       
-      <div className="bg-white rounded-3xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col md:flex-row shadow-2xl relative z-10 animate-in fade-in zoom-in duration-300">
-        <button 
-          onClick={onClose}
-          className="absolute top-4 right-4 z-20 w-10 h-10 rounded-full bg-black/20 text-white hover:bg-black/50 transition-colors flex items-center justify-center"
-        >
-          <i className="fa-solid fa-xmark text-xl"></i>
+      <div className="bg-white rounded-[2.5rem] w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col md:flex-row shadow-2xl relative z-10 animate-in fade-in zoom-in duration-300">
+        <button onClick={onClose} className="absolute top-6 right-6 z-20 w-10 h-10 rounded-full bg-white/10 text-white hover:bg-white/30 backdrop-blur-md transition-colors flex items-center justify-center border border-white/20">
+          <i className="fa-solid fa-xmark"></i>
         </button>
 
-        {/* Video Player Section */}
-        <div className="md:w-2/3 bg-black flex flex-col justify-center min-h-[300px] relative">
+        {/* Player Section */}
+        <div className="md:w-2/3 bg-slate-950 flex flex-col justify-center min-h-[300px] relative">
           {isUnlocked ? (
-            activeVideo ? (
-              <div className="w-full aspect-video">
-                <video 
-                  key={activeVideo.id}
-                  src={activeVideo.url} 
-                  controls 
-                  className="w-full h-full"
-                  autoPlay
-                />
-              </div>
-            ) : (
-              <div className="text-white text-center p-8">No videos in this course yet.</div>
-            )
+            <div className="w-full aspect-video bg-black">
+              {activeVideo ? (
+                <video key={activeVideo.id} src={activeVideo.url} controls className="w-full h-full" autoPlay />
+              ) : (
+                <div className="flex items-center justify-center h-full text-gray-500 font-bold">No Media Found</div>
+              )}
+            </div>
           ) : (
-            <div className="flex flex-col items-center justify-center p-8 text-white h-full">
+            <div className="flex flex-col items-center justify-center p-8 text-white h-full bg-gradient-to-b from-indigo-950 to-slate-950">
               {showScanner ? (
-                <div className="text-center animate-in slide-in-from-bottom duration-500">
-                  <h3 className="text-2xl font-bold mb-4">Scan QR to Unlock Course</h3>
-                  <div className="bg-white p-4 rounded-xl inline-block mb-6 shadow-2xl">
-                    <div className="w-48 h-48 bg-gray-800 flex items-center justify-center text-white relative overflow-hidden rounded">
-                       <i className="fa-solid fa-qrcode text-8xl opacity-20 absolute"></i>
-                       <div className="relative z-10 flex flex-col items-center">
-                          <span className="font-mono text-[10px]">PAYMENT_ID: {course.id}</span>
-                          <div className="grid grid-cols-4 gap-1 p-2">
-                             {Array.from({length: 16}).map((_,i) => (
-                               <div key={i} className={`w-4 h-4 ${Math.random() > 0.5 ? 'bg-white' : 'bg-transparent'}`}></div>
-                             ))}
-                          </div>
-                       </div>
-                    </div>
+                <div className="text-center space-y-6 max-w-sm animate-in slide-in-from-bottom-4">
+                  <div className="bg-white p-6 rounded-3xl shadow-2xl inline-block relative min-w-[200px] min-h-[250px]">
+                    {isSettingsLoading ? (
+                      <div className="w-48 h-48 flex flex-col items-center justify-center text-indigo-900 gap-3">
+                        <i className="fa-solid fa-circle-notch animate-spin text-3xl"></i>
+                        <span className="text-[10px] font-black uppercase tracking-widest">Loading Gateway...</span>
+                      </div>
+                    ) : (
+                      <>
+                        <div className="w-48 h-48 bg-slate-100 rounded-xl flex items-center justify-center relative overflow-hidden">
+                          {settings?.paymentQrCode ? (
+                            <img src={settings.paymentQrCode} className="w-full h-full object-contain animate-in fade-in duration-700" alt="Payment QR" />
+                          ) : (
+                            <>
+                              <i className="fa-solid fa-qrcode text-indigo-900 text-[10rem] opacity-10 absolute"></i>
+                              <div className="relative z-10 grid grid-cols-4 gap-2 p-4">
+                                {Array.from({length: 16}).map((_, i) => (
+                                  <div key={i} className={`w-6 h-6 rounded-sm ${Math.random() > 0.4 ? 'bg-indigo-900' : 'bg-transparent'}`}></div>
+                                ))}
+                              </div>
+                            </>
+                          )}
+                        </div>
+                        <div className="mt-4 text-indigo-900 font-black text-lg">Scan to Pay ₹{course.price}</div>
+                        <div className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mt-1 italic">Merchant: {settings?.upiId || 'shamanth@okaxis'}</div>
+                      </>
+                    )}
                   </div>
-                  <p className="text-gray-400 text-xs mb-6 max-w-xs mx-auto">
-                    Payment: <span className="text-white font-bold">${course.price}</span>. Admin will verify and unlock the course.
-                  </p>
-                  <button 
-                    onClick={handleRequestUnlock}
-                    className="bg-green-500 hover:bg-green-600 text-white px-8 py-3 rounded-full font-bold transition-all shadow-lg text-sm"
-                  >
-                    I Have Paid - Notify Admin
-                  </button>
+                  
+                  <div className="space-y-4 pt-4">
+                    <p className="text-indigo-200 text-xs font-medium leading-relaxed">
+                      After successful payment, click below to notify our administration team. Your course will be unlocked shortly.
+                    </p>
+                    <button 
+                      onClick={handleRequestUnlock}
+                      className="w-full bg-emerald-500 hover:bg-emerald-600 text-white py-4 rounded-2xl font-black shadow-xl shadow-emerald-500/20 transition-all active:scale-95 flex items-center justify-center gap-3"
+                    >
+                      <i className="fa-solid fa-circle-check"></i>
+                      I Have Paid - Notify Admin
+                    </button>
+                    <button onClick={() => setShowScanner(false)} className="text-slate-400 text-[10px] font-black uppercase tracking-widest hover:text-white transition-colors">Go Back</button>
+                  </div>
                 </div>
               ) : (
-                <div className="text-center">
-                  <div className="w-16 h-16 bg-white/10 rounded-full flex items-center justify-center mb-6 mx-auto border border-white/20">
-                    <i className="fa-solid fa-lock text-2xl text-amber-400"></i>
+                <div className="text-center max-w-sm">
+                  <div className="w-20 h-20 bg-indigo-500/10 rounded-3xl flex items-center justify-center mb-6 mx-auto border border-indigo-500/20">
+                    <i className="fa-solid fa-lock text-3xl text-amber-400"></i>
                   </div>
-                  <h3 className="text-2xl font-bold mb-2">Premium Content</h3>
-                  <p className="text-gray-400 mb-8 max-w-sm text-sm">
-                    Unlock all {course.videos.length} videos in this course for a one-time payment of <span className="text-white font-bold">${course.price}</span>.
+                  <h3 className="text-3xl font-black mb-2 tracking-tighter">Premium Access</h3>
+                  <p className="text-indigo-200/60 mb-8 font-medium">
+                    Unlock full access to {course.videos.length} high-quality lessons and materials for <span className="text-white font-bold">₹{course.price}</span>.
                   </p>
                   {isPending ? (
-                    <div className="bg-blue-500/20 border border-blue-500/50 text-blue-200 p-4 rounded-xl flex items-center gap-3">
-                      <i className="fa-solid fa-circle-info text-xl"></i>
-                      <div className="text-left">
-                        <div className="font-bold text-sm">Request Pending</div>
-                        <div className="text-[10px]">Admin is verifying your payment.</div>
+                    <div className="bg-amber-500/10 border border-amber-500/30 p-6 rounded-3xl text-amber-200 flex items-center gap-5 text-left animate-pulse">
+                      <div className="w-12 h-12 bg-amber-500/20 rounded-full flex items-center justify-center text-xl shrink-0">
+                        <i className="fa-solid fa-bolt"></i>
+                      </div>
+                      <div>
+                        <div className="font-black text-xs uppercase tracking-widest">Admin will unlock in a minute</div>
+                        <div className="text-[10px] font-medium opacity-80 mt-1 italic">We are verifying your transaction. You will get instant access shortly.</div>
                       </div>
                     </div>
                   ) : (
                     <button 
                       onClick={() => setShowScanner(true)}
-                      className="bg-blue-600 hover:bg-blue-700 text-white px-10 py-4 rounded-full font-bold transition-all shadow-xl shadow-blue-900/40"
+                      className="w-full bg-white text-indigo-950 py-4 rounded-2xl font-black shadow-2xl transition-all hover:-translate-y-1 active:scale-95"
                     >
-                      Unlock Now
+                      Unlock for ₹{course.price}
                     </button>
                   )}
                 </div>
@@ -133,93 +158,55 @@ const CourseModal: React.FC<CourseModalProps> = ({ course, user, onClose, onAuth
           )}
         </div>
 
-        {/* Playlist & AI Section */}
-        <div className="md:w-1/3 flex flex-col h-full bg-white">
-          <div className="p-6 border-b flex justify-between items-start gap-4">
-            <div>
-              <h2 className="font-black text-lg mb-1 line-clamp-2 leading-tight">{course.title}</h2>
-              <div className="flex items-center gap-2 text-[10px] text-gray-500 font-bold">
-                 <span className="text-indigo-600 uppercase tracking-wider">{course.instructor}</span>
-                 <span>•</span>
-                 <span>{course.videos.length} Lessons</span>
-              </div>
+        {/* Playlist & Details */}
+        <div className="md:w-1/3 flex flex-col h-full bg-white border-l border-slate-100">
+          <div className="p-8 border-b border-slate-50">
+            <h2 className="font-black text-xl text-slate-900 leading-tight mb-2">{course.title}</h2>
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg uppercase tracking-widest">{course.instructor}</span>
+              <span className="text-[10px] text-slate-300">•</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase">{course.videos.length} Modules</span>
             </div>
           </div>
 
-          <div className="flex-grow overflow-y-auto p-4 custom-scrollbar bg-slate-50/50">
+          <div className="flex-grow overflow-y-auto p-6 space-y-3 bg-slate-50/30">
             {aiRoadmap ? (
-              <div className="animate-in slide-in-from-right duration-500">
-                <div className="bg-indigo-700 text-white p-6 rounded-[2rem] shadow-xl relative overflow-hidden mb-4">
-                  <div className="absolute top-0 right-0 p-4 opacity-10">
-                    <i className="fa-solid fa-sparkles text-4xl"></i>
-                  </div>
-                  <h4 className="text-xs font-black uppercase tracking-widest mb-4 text-indigo-200">AI Learning Strategy</h4>
-                  <div className="text-xs leading-relaxed space-y-3 whitespace-pre-wrap font-medium">
-                    {aiRoadmap}
-                  </div>
-                  <button 
-                    onClick={() => setAiRoadmap(null)}
-                    className="mt-6 w-full py-2 bg-white/10 hover:bg-white/20 border border-white/20 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all"
-                  >
-                    View Lessons
-                  </button>
-                </div>
+              <div className="bg-indigo-900 text-white p-6 rounded-3xl shadow-xl relative overflow-hidden animate-in slide-in-from-right">
+                <div className="absolute top-0 right-0 p-4 opacity-10"><i className="fa-solid fa-sparkles text-4xl"></i></div>
+                <h4 className="text-[10px] font-black uppercase tracking-[0.2em] mb-4 text-indigo-300">AI Learning Strategy</h4>
+                <div className="text-xs leading-relaxed font-medium space-y-3 whitespace-pre-wrap">{aiRoadmap}</div>
+                <button onClick={() => setAiRoadmap(null)} className="mt-6 w-full py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-black uppercase border border-white/10 transition-all">Show Playlist</button>
               </div>
             ) : (
-              <div className="space-y-3">
-                {course.videos.map((vid, idx) => {
-                  const isActive = activeVideo?.id === vid.id;
-                  return (
-                    <button
-                      key={vid.id}
-                      disabled={!isUnlocked}
-                      onClick={() => setActiveVideo(vid)}
-                      className={`w-full text-left p-4 rounded-2xl flex items-center gap-4 transition-all border ${
-                        !isUnlocked ? 'opacity-50 cursor-not-allowed grayscale' : 'hover:bg-white hover:shadow-md hover:border-indigo-100'
-                      } ${isActive ? 'bg-white border-indigo-200 shadow-lg ring-1 ring-indigo-100' : 'bg-white/50 border-transparent'}`}
-                    >
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0 ${
-                        isActive ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-500'
-                      }`}>
-                        {isUnlocked ? (
-                           isActive ? <i className="fa-solid fa-volume-high text-xs animate-pulse"></i> : <span className="text-xs font-black">{idx + 1}</span>
-                        ) : (
-                           <i className="fa-solid fa-lock text-[10px]"></i>
-                        )}
-                      </div>
-                      <div className="flex-grow min-w-0">
-                        <div className={`text-xs font-bold truncate ${isActive ? 'text-indigo-900' : 'text-gray-700'}`}>
-                          {vid.title}
-                        </div>
-                        <div className="text-[9px] text-gray-400 font-bold uppercase tracking-tighter">{vid.duration}</div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
+              course.videos.map((vid, idx) => (
+                <button
+                  key={vid.id}
+                  disabled={!isUnlocked}
+                  onClick={() => setActiveVideo(vid)}
+                  className={`w-full text-left p-4 rounded-2xl flex items-center gap-4 border transition-all ${
+                    !isUnlocked ? 'opacity-40 grayscale cursor-not-allowed' : 'hover:bg-white hover:shadow-lg'
+                  } ${activeVideo?.id === vid.id ? 'bg-white border-indigo-200 shadow-xl ring-2 ring-indigo-50' : 'bg-transparent border-transparent'}`}
+                >
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs ${activeVideo?.id === vid.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                    {isUnlocked ? (activeVideo?.id === vid.id ? <i className="fa-solid fa-play text-[10px] animate-pulse"></i> : idx + 1) : <i className="fa-solid fa-lock text-[10px]"></i>}
+                  </div>
+                  <div className="flex-grow min-w-0">
+                    <div className={`text-xs font-bold truncate ${activeVideo?.id === vid.id ? 'text-indigo-900' : 'text-slate-700'}`}>{vid.title}</div>
+                    <div className="text-[9px] font-black text-slate-400 uppercase mt-0.5">{vid.duration}</div>
+                  </div>
+                </button>
+              ))
             )}
           </div>
-          
-          <div className="p-6 bg-white border-t space-y-4">
-            {!aiRoadmap && (
-              <button 
-                onClick={handleGetAiRoadmap}
-                disabled={isAiLoading}
-                className="w-full flex items-center justify-center gap-2 bg-slate-900 hover:bg-indigo-700 text-white py-3 rounded-2xl font-black text-[11px] uppercase tracking-[0.15em] transition-all shadow-lg active:scale-95 disabled:opacity-50"
-              >
-                {isAiLoading ? (
-                  <i className="fa-solid fa-circle-notch animate-spin"></i>
-                ) : (
-                  <>
-                    <i className="fa-solid fa-sparkles text-amber-400"></i>
-                    Get AI Roadmap
-                  </>
-                )}
-              </button>
-            )}
-            <p className="text-[11px] text-gray-400 leading-relaxed font-medium">
-              {course.description}
-            </p>
+
+          <div className="p-8 bg-white border-t border-slate-50">
+            <button 
+              onClick={handleGetAiRoadmap} 
+              disabled={isAiLoading}
+              className="w-full bg-slate-900 hover:bg-indigo-700 text-white py-4 rounded-2xl font-black text-[10px] uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-3 disabled:opacity-50"
+            >
+              {isAiLoading ? <i className="fa-solid fa-spinner animate-spin"></i> : <><i className="fa-solid fa-sparkles text-amber-400"></i> Get AI Roadmap</>}
+            </button>
           </div>
         </div>
       </div>

@@ -8,7 +8,14 @@ export interface User {
   role: UserRole;
   enrolledCourses: string[]; // IDs of unlocked courses
   pendingUnlocks: string[]; // IDs of courses where payment is scanned
+  enrollmentDates?: Record<string, string>; // Maps courseId to ISO timestamp
   lastActive?: string; // ISO Timestamp
+}
+
+export interface PlatformSettings {
+  paymentQrCode: string | null; // Base64 string of the QR code
+  upiId: string;
+  contactNumber: string;
 }
 
 export interface Video {

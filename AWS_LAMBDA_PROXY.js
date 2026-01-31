@@ -1,11 +1,7 @@
 
 /**
  * AWS LAMBDA BACKEND (Node.js 18+)
- * Use this code to create a Lambda function and connect it to an API Gateway.
- * 
- * SETUP:
- * 1. Create a Lambda with Runtime: Node.js 18.x or 20.x
- * 2. Attach "AmazonDynamoDBFullAccess" policy to the Lambda Execution Role.
+ * Updated to support Platform Settings persistence.
  */
 
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
@@ -20,9 +16,9 @@ const {
 const client = new DynamoDBClient({});
 const docClient = DynamoDBDocumentClient.from(client);
 const TABLE_NAME = "Shamanth_Users";
+const SETTINGS_ID = "PLATFORM_CONFIG_GLOBAL";
 
 exports.handler = async (event) => {
-    // Handle preflight OPTIONS requests from browser
     if (event.httpMethod === 'OPTIONS') {
         return response(200, { message: "CORS Preflight OK" });
     }
@@ -32,9 +28,37 @@ exports.handler = async (event) => {
         const { action } = body;
         
         switch (action) {
+            case 'getSettings': {
+                const { Item } = await docClient.send(new GetCommand({ 
+                    TableName: TABLE_NAME, 
+                    Key: { id: SETTINGS_ID } 
+                }));
+                return response(200, Item || {
+                    id: SETTINGS_ID,
+                    paymentQrCode: null,
+                    upiId: 'shamanth@okaxis',
+                    contactNumber: '+91 999 000 1234'
+                });
+            }
+
+            case 'saveSettings': {
+                const settingsItem = {
+                    ...body.settings,
+                    id: SETTINGS_ID,
+                    updatedAt: new Date().toISOString()
+                };
+                await docClient.send(new PutCommand({ 
+                    TableName: TABLE_NAME, 
+                    Item: settingsItem 
+                }));
+                return response(200, { success: true });
+            }
+
             case 'getAllUsers': {
                 const data = await docClient.send(new ScanCommand({ TableName: TABLE_NAME }));
-                return response(200, data.Items);
+                // Filter out the settings item from the user list
+                const usersOnly = data.Items.filter(item => item.id !== SETTINGS_ID);
+                return response(200, usersOnly);
             }
                 
             case 'register': {
@@ -53,7 +77,7 @@ exports.handler = async (event) => {
 
             case 'login': {
                 const scanData = await docClient.send(new ScanCommand({ TableName: TABLE_NAME }));
-                const user = scanData.Items.find(u => u.email === body.email && u.pin === body.pin);
+                const user = scanData.Items.find(u => u.email === body.email && u.pin === body.pin && u.id !== SETTINGS_ID);
                 if (user) {
                     user.lastActive = new Date().toISOString();
                     await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: user }));

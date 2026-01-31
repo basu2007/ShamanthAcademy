@@ -3,13 +3,23 @@ import { Course } from './types';
 
 export const CATEGORIES = ['All', 'React', 'Java', 'Python', 'AWS', 'Data Science'];
 
+/**
+ * ADMIN ACCESS CREDENTIALS
+ * Email: admin@shamanth.com
+ * PIN: 1234
+ */
+export const ADMIN_CREDENTIALS = {
+  email: 'admin@shamanth.com',
+  pin: '1234'
+};
+
 export const MOCK_COURSES: Course[] = [
   {
     id: '1',
     title: 'Mastering React 18 for Professionals',
     description: 'Deep dive into React 18 hooks, suspense, and server components.',
     instructor: 'Shamanth S.',
-    thumbnail: 'https://picsum.photos/seed/react/600/400',
+    thumbnail: 'https://images.unsplash.com/photo-1633356122544-f134324a6cee?auto=format&fit=crop&q=80&w=800',
     category: 'React',
     price: 0,
     isFree: true,
@@ -23,9 +33,9 @@ export const MOCK_COURSES: Course[] = [
     title: 'Advanced Java Spring Boot Microservices',
     description: 'Build scalable microservices with Java Spring Boot and Kafka.',
     instructor: 'Shamanth S.',
-    thumbnail: 'https://picsum.photos/seed/java/600/400',
+    thumbnail: 'https://images.unsplash.com/photo-1517694712202-14dd9538aa97?auto=format&fit=crop&q=80&w=800',
     category: 'Java',
-    price: 49.99,
+    price: 4999,
     isFree: false,
     videos: [
       { id: 'v3', title: 'Setting up Environment', url: 'https://www.w3schools.com/html/mov_bbb.mp4', duration: '15:20' },
@@ -37,43 +47,12 @@ export const MOCK_COURSES: Course[] = [
     title: 'AWS Certified Solutions Architect',
     description: 'Get certified with this comprehensive guide to AWS services.',
     instructor: 'Cloud Lead',
-    thumbnail: 'https://picsum.photos/seed/aws/600/400',
+    thumbnail: 'https://images.unsplash.com/photo-1451187580459-43490279c0fa?auto=format&fit=crop&q=80&w=800',
     category: 'AWS',
-    price: 99.00,
+    price: 9900,
     isFree: false,
     videos: [
       { id: 'v5', title: 'EC2 & VPC Fundamentals', url: 'https://www.w3schools.com/html/mov_bbb.mp4', duration: '35:00' }
     ]
-  },
-  {
-    id: '4',
-    title: 'Python for Data Analysis',
-    description: 'Learn Pandas, Numpy and Matplotlib from scratch.',
-    instructor: 'Data Lead',
-    thumbnail: 'https://picsum.photos/seed/python/600/400',
-    category: 'Python',
-    price: 0,
-    isFree: true,
-    videos: [
-      { id: 'v6', title: 'Python Basics', url: 'https://www.w3schools.com/html/mov_bbb.mp4', duration: '10:15' }
-    ]
-  },
-  {
-    id: '5',
-    title: 'Deep Learning with TensorFlow',
-    description: 'Neural networks, CNNs, and LSTMs for industrial AI.',
-    instructor: 'AI Scientist',
-    thumbnail: 'https://picsum.photos/seed/ai/600/400',
-    category: 'Data Science',
-    price: 75.00,
-    isFree: false,
-    videos: [
-      { id: 'v7', title: 'Intro to Deep Learning', url: 'https://www.w3schools.com/html/mov_bbb.mp4', duration: '20:10' }
-    ]
   }
 ];
-
-export const ADMIN_CREDENTIALS = {
-  email: 'admin@shamanth.com',
-  pin: '1234'
-};
