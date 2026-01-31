@@ -124,6 +124,14 @@ exports.handler = async (event) => {
                 return response(401, { error: "Invalid credentials" });
             }
 
+            case 'deleteUser': {
+                await docClient.send(new DeleteCommand({ 
+                    TableName: TABLE_NAME, 
+                    Key: { id: body.userId } 
+                }));
+                return response(200, { success: true });
+            }
+
             case 'requestUnlock': {
                 const { Item: user } = await docClient.send(new GetCommand({ TableName: TABLE_NAME, Key: { id: body.userId } }));
                 if (user && !user.pendingUnlocks.includes(body.courseId)) {

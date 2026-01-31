@@ -134,8 +134,8 @@ export const registerUser = async (email: string, pin: string): Promise<User | n
 };
 
 export const loginUser = async (email: string, pin: string): Promise<User | null> => {
-  // Master Admin Check
-  if (email === ADMIN_CREDENTIALS.email && pin === ADMIN_CREDENTIALS.pin) {
+  // Master Admin Check - Explicitly check static credentials first
+  if (email.trim().toLowerCase() === ADMIN_CREDENTIALS.email.toLowerCase() && pin.trim() === ADMIN_CREDENTIALS.pin) {
     return {
       id: 'admin',
       email: ADMIN_CREDENTIALS.email,
@@ -156,6 +156,15 @@ export const loginUser = async (email: string, pin: string): Promise<User | null
     return user;
   }
   return null;
+};
+
+export const deleteUser = async (userId: string): Promise<void> => {
+  if (isCloudConnected()) {
+    await cloudFetch('deleteUser', { userId });
+  }
+  const users = await getStoredUsers();
+  const updated = users.filter(u => u.id !== userId);
+  localStorage.setItem(USERS_KEY, JSON.stringify(updated));
 };
 
 export const requestUnlock = async (userId: string, courseId: string): Promise<void> => {
