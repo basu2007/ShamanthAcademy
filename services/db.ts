@@ -2,12 +2,18 @@
 import { User, PlatformSettings, Course } from '../types';
 import { ADMIN_CREDENTIALS, MOCK_COURSES } from '../constants';
 
-const USERS_KEY = 'shamanth_academy_users_v3'; // Version bump for fresh start
+const USERS_KEY = 'shamanth_academy_users_v3'; 
 const SETTINGS_KEY = 'shamanth_academy_settings_v2';
 const COURSES_KEY = 'shamanth_academy_courses_v2';
 
-// ⚠️ IF YOU ARE SEEING 'FAILED TO FETCH', it is because this URL is invalid.
-// Leave it exactly as "INSERT_AWS_API_URL_HERE" to run in LOCAL-ONLY mode.
+/**
+ * 💡 AWS DEPLOYMENT NOTE:
+ * When deploying via Amplify, the 'amplify.yml' script automatically 
+ * replaces the placeholder below with your $BACKEND_API_URL.
+ * 
+ * For local development, you can manually paste your API Gateway 
+ * Invoke URL here (e.g., "https://xyz.execute-api.us-east-1.amazonaws.com/prod")
+ */
 const REMOTE_API_URL = "INSERT_AWS_API_URL_HERE";
 
 const DEFAULT_SETTINGS: PlatformSettings = {
@@ -22,9 +28,6 @@ const DEFAULT_SETTINGS: PlatformSettings = {
   ]
 };
 
-/**
- * STRICT CLOUD CHECK: Prevents any network calls if URL is placeholder.
- */
 const isCloudEnabled = () => {
   return REMOTE_API_URL && 
          REMOTE_API_URL.length > 20 &&
@@ -33,11 +36,11 @@ const isCloudEnabled = () => {
 };
 
 async function cloudFetch(action: string, body: any = {}) {
-  if (!isCloudEnabled()) return null; // PHYSICAL BYPASS - No fetch attempted
+  if (!isCloudEnabled()) return null;
   
   try {
     const controller = new AbortController();
-    const id = setTimeout(() => controller.abort(), 4000); 
+    const id = setTimeout(() => controller.abort(), 8000); 
 
     const response = await fetch(REMOTE_API_URL, {
       method: 'POST',
@@ -63,8 +66,6 @@ async function cloudFetch(action: string, body: any = {}) {
   }
 }
 
-// --- CORE SERVICES ---
-
 export const getStoredUsers = async (): Promise<User[]> => {
   const cloudData = await cloudFetch('getAllUsers');
   if (cloudData && Array.isArray(cloudData)) {
@@ -72,28 +73,19 @@ export const getStoredUsers = async (): Promise<User[]> => {
     return cloudData;
   }
   const local = localStorage.getItem(USERS_KEY);
-  try {
-    return local ? JSON.parse(local) : [];
-  } catch (e) {
-    return [];
-  }
+  try { return local ? JSON.parse(local) : []; } catch (e) { return []; }
 };
 
 export const registerUser = async (email: string, pin: string): Promise<User | null> => {
   const cleanEmail = email.trim().toLowerCase();
-  
-  // 1. Check local first to avoid unnecessary cloud calls or duplicate errors
   const currentUsers = await getStoredUsers();
-  if (currentUsers.some(u => u.email === cleanEmail)) {
-    return null; // Signals user exists
-  }
+  if (currentUsers.some(u => u.email === cleanEmail)) return null;
 
-  // 2. Try Cloud if enabled
   if (isCloudEnabled()) {
     try {
       const cloudUser = await cloudFetch('register', { email: cleanEmail, pin });
       if (cloudUser) {
-        localStorage.removeItem(USERS_KEY); // Wipe cache to force re-fetch
+        localStorage.removeItem(USERS_KEY);
         return cloudUser;
       }
     } catch (err: any) {
@@ -101,9 +93,8 @@ export const registerUser = async (email: string, pin: string): Promise<User | n
     }
   }
   
-  // 3. Persistent Local Registration
   const newUser: User = {
-    id: `u_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+    id: `u_${Date.now()}`,
     email: cleanEmail,
     pin: pin.trim(),
     role: 'USER',
@@ -122,7 +113,6 @@ export const loginUser = async (email: string, pin: string): Promise<User | null
   const cleanEmail = email.trim().toLowerCase();
   const cleanPin = pin.trim();
 
-  // Admin Master Login
   if (cleanEmail === ADMIN_CREDENTIALS.email.toLowerCase() && cleanPin === ADMIN_CREDENTIALS.pin) {
     return {
       id: 'admin', email: ADMIN_CREDENTIALS.email, pin: ADMIN_CREDENTIALS.pin,
@@ -130,30 +120,21 @@ export const loginUser = async (email: string, pin: string): Promise<User | null
     };
   }
 
-  // Cloud Login
   if (isCloudEnabled()) {
     const cloudUser = await cloudFetch('login', { email: cleanEmail, pin: cleanPin });
     if (cloudUser) return cloudUser;
   }
 
-  // Local Login
   const users = await getStoredUsers();
   return users.find(u => u.email === cleanEmail && u.pin === cleanPin) || null;
 };
 
 export const deleteUser = async (userId: string): Promise<void> => {
-  // Sync Local First
   const users = await getStoredUsers();
   const filtered = users.filter(u => u.id !== userId);
   localStorage.setItem(USERS_KEY, JSON.stringify(filtered));
-
-  // Sync Cloud
-  if (isCloudEnabled()) {
-    await cloudFetch('deleteUser', { userId });
-  }
+  if (isCloudEnabled()) await cloudFetch('deleteUser', { userId });
 };
-
-// --- DATA FETCHERS ---
 
 export const getCourses = async (): Promise<Course[]> => {
   const cloudCourses = await cloudFetch('getCourses');
@@ -195,30 +176,21 @@ export const savePlatformSettings = async (settings: PlatformSettings): Promise<
 };
 
 export const requestUnlock = async (userId: string, courseId: string): Promise<void> => {
-  if (isCloudEnabled()) {
-    const res = await cloudFetch('requestUnlock', { userId, courseId });
-    if (res) return;
-  }
+  if (isCloudEnabled()) await cloudFetch('requestUnlock', { userId, courseId });
   const users = await getStoredUsers();
   const updated = users.map(u => u.id === userId ? { ...u, pendingUnlocks: [...new Set([...(u.pendingUnlocks || []), courseId])], lastActive: new Date().toISOString() } : u);
   localStorage.setItem(USERS_KEY, JSON.stringify(updated));
 };
 
 export const approveUnlock = async (userId: string, courseId: string): Promise<void> => {
-  if (isCloudEnabled()) {
-    const res = await cloudFetch('approveUnlock', { userId, courseId });
-    if (res) return;
-  }
+  if (isCloudEnabled()) await cloudFetch('approveUnlock', { userId, courseId });
   const users = await getStoredUsers();
   const updated = users.map(u => u.id === userId ? { ...u, pendingUnlocks: (u.pendingUnlocks || []).filter(id => id !== courseId), enrolledCourses: [...new Set([...(u.enrolledCourses || []), courseId])], enrollmentDates: { ...(u.enrollmentDates || {}), [courseId]: new Date().toISOString() }, lastActive: new Date().toISOString() } : u);
   localStorage.setItem(USERS_KEY, JSON.stringify(updated));
 };
 
 export const lockCourse = async (userId: string, courseId: string): Promise<void> => {
-  if (isCloudEnabled()) {
-    const res = await cloudFetch('lockCourse', { userId, courseId });
-    if (res) return;
-  }
+  if (isCloudEnabled()) await cloudFetch('lockCourse', { userId, courseId });
   const users = await getStoredUsers();
   const updated = users.map(u => {
     if (u.id === userId) {
