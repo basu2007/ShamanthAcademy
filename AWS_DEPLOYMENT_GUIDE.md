@@ -1,64 +1,43 @@
-# 🚀 Shamanth Academy: AWS Deployment Guide
+# 🚀 Shamanth Academy: Windows Deployment Guide
 
-This guide provides the exact steps and commands to set up your backend infrastructure.
-
-## 💻 Choose Your Platform
-
-### Option A: Windows (PowerShell)
-1. Open **PowerShell** as Administrator in the project folder.
-2. Run the automation script:
-   ```powershell
-   .\scripts\aws-setup.ps1
-   ```
-   *Note: If you get a script execution error, run `Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process` first.*
-
-### Option B: Linux / Mac / Git Bash
-1. Open your terminal.
-2. Make the script executable and run it:
-   ```bash
-   chmod +x scripts/aws-setup.sh
-   ./scripts/aws-setup.sh
-   ```
+Since you are on **Windows**, please follow these exact steps. **Ignore any commands starting with `chmod` or `./scripts/aws-setup.sh`** as those are for Mac/Linux only.
 
 ---
 
-## 🛠️ Manual Step: API Gateway (Required)
-The automation script handles the Database and Lambda. You must now expose the Lambda to the internet:
+## 🏁 Phase 1: The Foundation (Backend)
+Run these commands in your **PowerShell** window:
 
-1. **Go to AWS Console** > **API Gateway**.
-2. Click **Create API** > **REST API** (Build).
-3. **API Name**: `Shamanth_API`.
-4. **Create Resource**: Actions > Create Resource. Name: `proxy`.
-5. **Create Method**: Select `/proxy`. Actions > Create Method > **POST**.
-   - Integration: **Lambda Function**.
-   - **Lambda Proxy integration**: CHECKED (CRITICAL).
-   - Lambda Function: `Shamanth_Backend`.
-6. **Enable CORS**: Select `/proxy`. Actions > **Enable CORS**.
-   - Click "Enable CORS and replace existing CORS headers".
-7. **Deploy API**: Actions > **Deploy API**.
-   - Deployment stage: `[New Stage]` named `prod`.
-8. **COPY THE INVOKE URL**: (e.g., `https://xyz.execute-api.region.amazonaws.com/prod/proxy`).
+1.  **Allow scripts to run** (Copy and paste this):
+    ```powershell
+    Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+    ```
+2.  **Run the Windows Setup Script**:
+    ```powershell
+    .\scripts\aws-setup.ps1
+    ```
+    *If successful, you will see green text saying "Backend Base Setup Complete!"*
 
 ---
 
-## 🌐 Final Step: Frontend (Amplify)
-1. Go to **AWS Amplify Console**.
-2. Connect your repository (GitHub/GitLab).
-3. **Environment Variables**:
-   - Add `BACKEND_API_URL`.
-   - Value: Paste your **Invoke URL** from the API Gateway step.
-4. **Deploy**: The build process will automatically link your frontend to your new AWS backend.
+## 🌉 Phase 2: The Bridge (API Gateway)
+1. Log in to [AWS API Gateway](https://console.aws.amazon.com/apigateway).
+2. Click **Create API** -> **REST API** (Build).
+3. **Name**: `Shamanth_API`.
+4. **Create Resource**: Actions -> Create Resource. Name it `proxy`.
+5. **Create Method**: Select `/proxy`. Actions -> Create Method -> **POST**.
+   - **Integration**: Lambda Function.
+   - **Lambda Proxy integration**: ✅ **CHECK THIS BOX**.
+   - **Lambda Function**: `Shamanth_Backend`.
+6. **Enable CORS**: Select `/proxy`. Actions -> **Enable CORS**.
+7. **Deploy API**: Actions -> **Deploy API**. Stage: `prod`.
+8. **SAVE THE URL**: Copy the "Invoke URL" from the top of the screen.
 
 ---
 
-## 🧹 Quick Cleanup (Remove Resources)
-To stop all AWS charges:
-```bash
-# Delete DB
-aws dynamodb delete-table --table-name Shamanth_Users
-# Delete Lambda
-aws lambda delete-function --function-name Shamanth_Backend
-# Delete Role
-aws iam detach-role-policy --role-name ShamanthLambdaRole --policy-arn arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
-aws iam delete-role --role-name ShamanthLambdaRole
-```
+## 🎨 Phase 3: The Face (AWS Amplify)
+1. Push your code to GitHub.
+2. Connect the repo to [AWS Amplify](https://console.aws.amazon.com/amplify).
+3. **Add Environment Variables**:
+   - `BACKEND_API_URL`: Your URL from Phase 2 + `/proxy` (e.g., `https://xyz.execute-api.us-east-1.amazonaws.com/prod/proxy`)
+   - `API_KEY`: Your Google Gemini API Key.
+4. Deploy.

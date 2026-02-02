@@ -1,5 +1,11 @@
 # Shamanth Academy - Automated AWS Backend Setup (Windows PowerShell)
-# This script creates DynamoDB and Lambda resources.
+
+# Check if running in the correct directory
+if (!(Test-Path "AWS_LAMBDA_PROXY.js")) {
+    Write-Host "❌ Error: Could not find 'AWS_LAMBDA_PROXY.js' in this folder." -ForegroundColor Red
+    Write-Host "👉 Please 'cd' into the root of Shamanth Academy before running this script." -ForegroundColor Yellow
+    exit
+}
 
 Write-Host "------------------------------------------" -ForegroundColor Cyan
 Write-Host "🛠️ Starting Shamanth Academy AWS Setup..." -ForegroundColor Cyan
@@ -61,5 +67,5 @@ if ($null -eq $exists) {
 
 Write-Host "------------------------------------------" -ForegroundColor Green
 Write-Host "✅ Backend Base Setup Complete!" -ForegroundColor Green
-Write-Host "Next Step: Manually create a REST API in API Gateway and point it to the 'Shamanth_Backend' Lambda." -ForegroundColor Green
+Write-Host "Next Step: Follow Phase 2 in AWS_DEPLOYMENT_GUIDE.md" -ForegroundColor Green
 Write-Host "------------------------------------------" -ForegroundColor Green

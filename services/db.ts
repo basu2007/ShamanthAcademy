@@ -1,4 +1,3 @@
-
 import { User, PlatformSettings, Course } from '../types';
 import { ADMIN_CREDENTIALS, MOCK_COURSES } from '../constants';
 
@@ -10,9 +9,6 @@ const COURSES_KEY = 'shamanth_academy_courses_v2';
  * 💡 AWS DEPLOYMENT NOTE:
  * When deploying via Amplify, the 'amplify.yml' script automatically 
  * replaces the placeholder below with your $BACKEND_API_URL.
- * 
- * For local development, you can manually paste your API Gateway 
- * Invoke URL here (e.g., "https://xyz.execute-api.us-east-1.amazonaws.com/prod")
  */
 const REMOTE_API_URL = "INSERT_AWS_API_URL_HERE";
 
@@ -29,10 +25,15 @@ const DEFAULT_SETTINGS: PlatformSettings = {
 };
 
 const isCloudEnabled = () => {
-  return REMOTE_API_URL && 
+  const enabled = REMOTE_API_URL && 
          REMOTE_API_URL.length > 20 &&
          !REMOTE_API_URL.includes("INSERT_AWS") && 
          REMOTE_API_URL.startsWith("http");
+  
+  if (enabled) {
+    console.log("🌐 [System] AWS Cloud Persistence Active.");
+  }
+  return enabled;
 };
 
 async function cloudFetch(action: string, body: any = {}) {
