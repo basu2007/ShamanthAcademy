@@ -1,9 +1,12 @@
 # Shamanth Academy - Automated AWS Backend Setup (Windows PowerShell)
 
+Write-Host "`n🚀 Initializing Shamanth Academy Setup Script..." -ForegroundColor Cyan
+
 # Check if running in the correct directory
 if (!(Test-Path "AWS_LAMBDA_PROXY.js")) {
     Write-Host "❌ Error: Could not find 'AWS_LAMBDA_PROXY.js' in this folder." -ForegroundColor Red
-    Write-Host "👉 Please 'cd' into the root of Shamanth Academy before running this script." -ForegroundColor Yellow
+    Write-Host "👉 You are currently in: $((Get-Location).Path)" -ForegroundColor Gray
+    Write-Host "👉 Please 'cd' into the folder that contains AWS_LAMBDA_PROXY.js" -ForegroundColor Yellow
     exit
 }
 

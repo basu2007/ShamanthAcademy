@@ -1,62 +1,47 @@
-# 🚀 Shamanth Academy: Windows Deployment Guide
+# 🚀 Shamanth Academy: Step 1 (Detailed Windows Guide)
 
-Follow these steps exactly. If one step fails, do not proceed to the next.
+If you saw an error saying "term is not recognized," follow these exact sub-steps.
 
 ---
 
-## 🏁 Phase 0: Verification (Do this first!)
-Before running the setup, let's make sure you are in the right folder and the file exists.
-In your PowerShell, run this:
+## 🛠️ Step 1: The Backend Setup
+
+### 1.1 Verify your location
+Run this command to see if the script is where we think it is:
 ```powershell
-Test-Path "scripts/aws-setup.ps1"
+ls scripts/aws-setup.ps1
 ```
-- If it says **True**: Proceed to Phase 1.
-- If it says **False**: You are in the wrong folder. Run `ls` to see where you are, then `cd` into the correct `ShamanthAcademy` folder.
+- **If you see an error**: The `scripts` folder doesn't exist. Run this to fix it:
+  ```powershell
+  mkdir scripts; mv aws-setup.ps1 scripts/
+  ```
+- **If you see the file listed**: Proceed to 1.2.
+
+### 1.2 Unblock PowerShell (The "Key" to the Lock)
+Windows blocks scripts by default for security. You must run this command **once per session**:
+```powershell
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
+```
+- When it asks `[Y] Yes [N] No`, type **`Y`** and press **Enter**.
+
+### 1.3 Run the Script
+Now, run the script using its relative path. If the first one fails, try the second:
+```powershell
+# Option A (Standard)
+.\scripts\aws-setup.ps1
+
+# Option B (If Option A fails)
+powershell -ExecutionPolicy Bypass -File .\scripts\aws-setup.ps1
+```
+
+### 1.4 What this script does (The Details)
+When this script runs successfully, it performs 4 critical tasks:
+1.  **Database**: Creates a `Shamanth_Users` table in AWS DynamoDB.
+2.  **Security**: Creates an IAM Role (`ShamanthLambdaRole`) so the code has permission to talk to the database.
+3.  **Packaging**: Compresses your `AWS_LAMBDA_PROXY.js` into a `.zip` file.
+4.  **Deployment**: Uploads that zip to **AWS Lambda** and names it `Shamanth_Backend`.
 
 ---
 
-## 🏁 Phase 1: The Foundation (Backend)
-1. **Unblock Scripts**: Copy and paste this, then **Press Enter**:
-   ```powershell
-   Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope Process
-   ```
-   - **IMPORTANT**: If it asks `Do you want to change the execution policy? [Y/N]`, type `Y` and press **Enter**.
-
-2. **Run the Setup**:
-   ```powershell
-   .\scripts\aws-setup.ps1
-   ```
-   - *Note: If this still fails, try running it without the subfolder if you moved it: `.\aws-setup.ps1`*
-
----
-
-## 🌉 Phase 2: The Bridge (API Gateway)
-1. Log in to [AWS API Gateway](https://console.aws.amazon.com/apigateway).
-2. Click **Create API** -> **REST API** (Find the "REST API" box and click **Build**).
-3. **Settings**:
-   - **Name**: `Shamanth_API`
-   - **Endpoint**: Regional
-4. **Create the Proxy**:
-   - Click **Actions** -> **Create Resource**.
-   - **Resource Name**: `proxy`
-   - Click **Create Resource**.
-5. **Create the Method**:
-   - Select the `/proxy` folder.
-   - Click **Actions** -> **Create Method**.
-   - Select **POST** and click the checkmark.
-   - **Integration**: Lambda Function.
-   - **Lambda Proxy integration**: ✅ **CRITICAL: CHECK THIS BOX**.
-   - **Lambda Function**: `Shamanth_Backend`.
-6. **Enable CORS**: Select `/proxy` -> **Actions** -> **Enable CORS** -> Click the blue "Enable..." button.
-7. **Deploy**: **Actions** -> **Deploy API**. Stage: `prod`.
-8. **URL**: Copy the "Invoke URL" from the top. It looks like `https://xxx.execute-api.us-east-1.amazonaws.com/prod`.
-
----
-
-## 🎨 Phase 3: The Face (AWS Amplify)
-1. Push your code to GitHub.
-2. Connect to [AWS Amplify](https://console.aws.amazon.com/amplify).
-3. **Environment Variables**:
-   - `BACKEND_API_URL`: Paste your URL + `/proxy` (e.g. `https://xyz.../prod/proxy`)
-   - `API_KEY`: Your Gemini API Key.
-4. Deploy.
+## 🌉 Moving to Step 2?
+Only move to Step 2 (API Gateway) once you see the green message: **"✅ Backend Base Setup Complete!"**
