@@ -256,6 +256,7 @@ const AdminDashboard: React.FC = () => {
               <select value={editingCourse.category} onChange={e => setEditingCourse({...editingCourse, category: e.target.value})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none">
                  {settings?.categories.map(c => <option key={c} value={c}>{c}</option>)}
               </select>
+              <input type="text" placeholder="Youtube Channel Info" value={editingCourse.youtubeChannel || ''} onChange={e => setEditingCourse({...editingCourse, youtubeChannel: e.target.value})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none col-span-1 md:col-span-2" />
             </div>
             <button onClick={handleSaveCourse} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl">Update courses.csv</button>
           </div>

@@ -37,6 +37,7 @@ export interface Course {
   price: number;
   isFree: boolean;
   videos: Video[];
+  youtubeChannel?: string;
 }
 
 export interface Batch {

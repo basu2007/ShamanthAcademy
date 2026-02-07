@@ -23,6 +23,7 @@ export const MOCK_COURSES: Course[] = [
     category: 'React',
     price: 0,
     isFree: true,
+    youtubeChannel: 'Shamanth Academy Official',
     videos: [
       { id: 'v1', title: 'Introduction to React', url: 'https://www.w3schools.com/html/mov_bbb.mp4', duration: '12:05' },
       { id: 'v2', title: 'Functional Components', url: 'https://www.w3schools.com/html/mov_bbb.mp4', duration: '18:30' }
@@ -37,6 +38,7 @@ export const MOCK_COURSES: Course[] = [
     category: 'Java',
     price: 4999,
     isFree: false,
+    youtubeChannel: 'Shamanth Academy Official',
     videos: [
       { id: 'v3', title: 'Setting up Environment', url: 'https://www.w3schools.com/html/mov_bbb.mp4', duration: '15:20' },
       { id: 'v4', title: 'Database Connectivity', url: 'https://www.w3schools.com/html/mov_bbb.mp4', duration: '22:45' }
@@ -51,6 +53,7 @@ export const MOCK_COURSES: Course[] = [
     category: 'AWS',
     price: 9900,
     isFree: false,
+    youtubeChannel: 'Shamanth Academy Cloud',
     videos: [
       { id: 'v5', title: 'EC2 & VPC Fundamentals', url: 'https://www.w3schools.com/html/mov_bbb.mp4', duration: '35:00' }
     ]
