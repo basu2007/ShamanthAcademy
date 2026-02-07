@@ -42,8 +42,6 @@ const App: React.FC = () => {
   useEffect(() => {
     const initApp = async () => {
       setIsLoading(true);
-      // No localStorage recovery here anymore.
-      // Every refresh is a clean state.
       await refreshCourseData();
       await refreshSettings();
       setIsLoading(false);
@@ -87,9 +85,14 @@ const App: React.FC = () => {
   };
 
   const filteredCourses = courses.filter(course => {
+    if (!course) return false;
+    const title = (course.title || '').toLowerCase();
+    const desc = (course.description || '').toLowerCase();
+    const query = searchQuery.toLowerCase();
+
     const matchesCategory = selectedCategory === 'All' || course.category === selectedCategory;
-    const matchesSearch = course.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                          course.description.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesSearch = title.includes(query) || desc.includes(query);
+    
     return matchesCategory && matchesSearch;
   });
 

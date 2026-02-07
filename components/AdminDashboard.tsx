@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { User, Course, Batch, PlatformSettings } from '../types';
+import { User, Course, Batch, PlatformSettings, Video } from '../types';
 import * as db from '../services/db';
 
 const AdminDashboard: React.FC = () => {
@@ -16,6 +16,9 @@ const AdminDashboard: React.FC = () => {
   const [editingBatch, setEditingBatch] = useState<Partial<Batch>>({});
   const [showCourseForm, setShowCourseForm] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Partial<Course>>({ videos: [] });
+
+  // Module addition state
+  const [newVideo, setNewVideo] = useState<Partial<Video>>({ title: '', url: '', duration: '10:00' });
 
   useEffect(() => {
     const startup = async () => {
@@ -46,13 +49,46 @@ const AdminDashboard: React.FC = () => {
     reader.readAsDataURL(file);
   };
 
+  const addVideoModule = () => {
+    if (!newVideo.title || !newVideo.url) return;
+    const videoObj: Video = {
+      id: `v_${Date.now()}`,
+      title: newVideo.title,
+      url: newVideo.url,
+      duration: newVideo.duration || '10:00'
+    };
+    setEditingCourse(prev => ({
+      ...prev,
+      videos: [...(prev.videos || []), videoObj]
+    }));
+    setNewVideo({ title: '', url: '', duration: '10:00' });
+  };
+
+  const removeVideoModule = (id: string) => {
+    setEditingCourse(prev => ({
+      ...prev,
+      videos: (prev.videos || []).filter(v => v.id !== id)
+    }));
+  };
+
   const handleSaveCourse = async () => {
-    if (!editingCourse.title) return;
+    if (!editingCourse.title) {
+        alert("Course Title is mandatory");
+        return;
+    }
     const course = {
       ...editingCourse,
       id: editingCourse.id || `c_${Date.now()}`,
-      thumbnail: editingCourse.thumbnail || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=800'
+      description: editingCourse.description || 'Expert training module at Shamanth Academy.',
+      instructor: editingCourse.instructor || 'Shamanth Academy Team',
+      category: editingCourse.category || 'General',
+      thumbnail: editingCourse.thumbnail || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=800',
+      price: editingCourse.price || 0,
+      isFree: (editingCourse.price || 0) === 0,
+      videos: editingCourse.videos || [],
+      youtubeChannel: editingCourse.youtubeChannel || ''
     } as Course;
+    
     await db.saveCourse(course);
     setShowCourseForm(false);
     refreshData();
@@ -226,7 +262,52 @@ const AdminDashboard: React.FC = () => {
         </div>
       )}
 
-      {/* Forms */}
+      {/* Course Form Modal */}
+      {showCourseForm && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setShowCourseForm(false)}></div>
+          <div className="bg-white rounded-[2.5rem] w-full max-w-4xl p-10 relative z-10 animate-in zoom-in max-h-[90vh] overflow-y-auto">
+            <h2 className="text-2xl font-black mb-8 text-slate-900">Push New Course</h2>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+              <input type="text" placeholder="Course Title" value={editingCourse.title} onChange={e => setEditingCourse({...editingCourse, title: e.target.value})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
+              <input type="text" placeholder="Instructor" value={editingCourse.instructor} onChange={e => setEditingCourse({...editingCourse, instructor: e.target.value})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
+              <input type="number" placeholder="Price (INR)" value={editingCourse.price} onChange={e => setEditingCourse({...editingCourse, price: Number(e.target.value)})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
+              <select value={editingCourse.category} onChange={e => setEditingCourse({...editingCourse, category: e.target.value})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none">
+                 {settings?.categories.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <input type="text" placeholder="Youtube Channel Path" value={editingCourse.youtubeChannel || ''} onChange={e => setEditingCourse({...editingCourse, youtubeChannel: e.target.value})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none col-span-1 md:col-span-2" />
+            </div>
+
+            {/* Video Modules Management */}
+            <div className="mb-10">
+              <h3 className="text-sm font-black uppercase text-slate-400 mb-4 tracking-widest">Manage Video Modules</h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                <input type="text" placeholder="Module Title" value={newVideo.title} onChange={e => setNewVideo({...newVideo, title: e.target.value})} className="p-3 bg-white rounded-xl text-xs font-bold" />
+                <input type="text" placeholder="Video URL (YouTube/MP4)" value={newVideo.url} onChange={e => setNewVideo({...newVideo, url: e.target.value})} className="p-3 bg-white rounded-xl text-xs font-bold" />
+                <button onClick={addVideoModule} className="bg-indigo-600 text-white p-3 rounded-xl text-[10px] font-black uppercase">Add Module</button>
+              </div>
+
+              <div className="space-y-2">
+                {(editingCourse.videos || []).map((v, i) => (
+                  <div key={v.id} className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl">
+                    <div className="flex items-center gap-3">
+                      <span className="text-[10px] font-black text-slate-300">#{i+1}</span>
+                      <span className="text-xs font-bold text-slate-700">{v.title}</span>
+                      <span className="text-[9px] font-medium text-slate-400 truncate max-w-[150px]">{v.url}</span>
+                    </div>
+                    <button onClick={() => removeVideoModule(v.id)} className="text-red-400 hover:text-red-600 text-xs px-2"><i className="fa-solid fa-trash-can"></i></button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <button onClick={handleSaveCourse} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl">Update courses.csv</button>
+          </div>
+        </div>
+      )}
+
+      {/* Batch Form Modal */}
       {showBatchForm && (
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setShowBatchForm(false)}></div>
@@ -235,30 +316,11 @@ const AdminDashboard: React.FC = () => {
             <div className="space-y-4 mb-8">
               <input type="text" placeholder="Batch Title" value={editingBatch.title} onChange={e => setEditingBatch({...editingBatch, title: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
               <div className="grid grid-cols-2 gap-4">
-                <input type="text" placeholder="Start Date (e.g. Oct 15)" value={editingBatch.startDate} onChange={e => setEditingBatch({...editingBatch, startDate: e.target.value})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
-                <input type="text" placeholder="Timings (e.g. 7 PM IST)" value={editingBatch.timings} onChange={e => setEditingBatch({...editingBatch, timings: e.target.value})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
+                <input type="text" placeholder="Start Date" value={editingBatch.startDate} onChange={e => setEditingBatch({...editingBatch, startDate: e.target.value})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
+                <input type="text" placeholder="Timings" value={editingBatch.timings} onChange={e => setEditingBatch({...editingBatch, timings: e.target.value})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
               </div>
             </div>
             <button onClick={async () => { await db.saveBatch({ ...editingBatch, id: editingBatch.id || `b_${Date.now()}` } as Batch); setShowBatchForm(false); refreshData(); }} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl">Update batches.csv</button>
-          </div>
-        </div>
-      )}
-
-      {showCourseForm && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
-          <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setShowCourseForm(false)}></div>
-          <div className="bg-white rounded-[2.5rem] w-full max-w-2xl p-10 relative z-10 animate-in zoom-in">
-            <h2 className="text-2xl font-black mb-8 text-slate-900">Push New Course</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-              <input type="text" placeholder="Course Title" value={editingCourse.title} onChange={e => setEditingCourse({...editingCourse, title: e.target.value})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
-              <input type="text" placeholder="Instructor" value={editingCourse.instructor} onChange={e => setEditingCourse({...editingCourse, instructor: e.target.value})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
-              <input type="number" placeholder="Price (INR)" value={editingCourse.price} onChange={e => setEditingCourse({...editingCourse, price: Number(e.target.value)})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
-              <select value={editingCourse.category} onChange={e => setEditingCourse({...editingCourse, category: e.target.value})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none">
-                 {settings?.categories.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <input type="text" placeholder="Youtube Channel Info" value={editingCourse.youtubeChannel || ''} onChange={e => setEditingCourse({...editingCourse, youtubeChannel: e.target.value})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none col-span-1 md:col-span-2" />
-            </div>
-            <button onClick={handleSaveCourse} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl">Update courses.csv</button>
           </div>
         </div>
       )}
