@@ -6,18 +6,18 @@ export interface User {
   email: string;
   pin: string;
   role: UserRole;
-  enrolledCourses: string[]; // IDs of unlocked courses
-  pendingUnlocks: string[]; // IDs of courses where payment is scanned
-  enrollmentDates?: Record<string, string>; // Maps courseId to ISO timestamp
-  lastActive?: string; // ISO Timestamp
+  enrolledCourses: string[]; 
+  pendingUnlocks: string[]; 
+  enrollmentDates?: Record<string, string>; 
+  lastActive?: string; 
 }
 
 export interface PlatformSettings {
-  paymentQrCode: string | null; // Base64 string of the QR code
+  paymentQrCode: string | null;
   upiId: string;
   contactNumber: string;
-  flashNews: string[]; // Manageable list of news strings
-  categories: string[]; // Dynamically managed categories
+  flashNews: string[];
+  categories: string[];
 }
 
 export interface Video {
@@ -37,6 +37,16 @@ export interface Course {
   price: number;
   isFree: boolean;
   videos: Video[];
+}
+
+export interface Batch {
+  id: string;
+  courseId: string;
+  title: string;
+  startDate: string;
+  timings: string;
+  mode: 'Online' | 'Offline' | 'Hybrid';
+  status: 'Registration Open' | 'Starting Soon' | 'Ongoing' | 'Completed';
 }
 
 export type AuthState = {
