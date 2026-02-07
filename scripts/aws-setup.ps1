@@ -5,14 +5,24 @@ Write-Host "`n🚀 Initializing Shamanth Academy Setup Script..." -ForegroundCol
 
 # 0. Check AWS Configuration
 Write-Host "👤 Checking AWS Identity..." -ForegroundColor Gray
-$identity = aws sts get-caller-identity
+$identityJson = aws sts get-caller-identity --output json
 if ($LASTEXITCODE -ne 0) {
     Write-Host "❌ ERROR: AWS CLI is not configured or credentials expired." -ForegroundColor Red
     Write-Host "👉 Run 'aws configure' to set your access keys." -ForegroundColor Yellow
     exit
 }
 
+# Parse JSON for reliable ID extraction
+$identity = $identityJson | ConvertFrom-Json
+$accountId = $identity.Account
 $region = aws configure get region
+
+if ([string]::IsNullOrWhiteSpace($accountId)) {
+    Write-Host "❌ ERROR: Could not extract Account ID from AWS." -ForegroundColor Red
+    exit
+}
+
+Write-Host "🆔 Account ID: $accountId" -ForegroundColor Green
 Write-Host "🌍 Target Region: $region" -ForegroundColor Cyan
 
 if (!(Test-Path "AWS_LAMBDA_PROXY.js")) {
@@ -30,7 +40,7 @@ aws dynamodb create-table `
     --table-name Shamanth_Users `
     --attribute-definitions AttributeName=id,AttributeType=S `
     --key-schema AttributeName=id,KeyType=HASH `
-    --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5
+    --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 2>$null
 
 # 2. Setup IAM Role
 Write-Host "🔐 Setting up IAM Roles..." -ForegroundColor Yellow
@@ -48,7 +58,7 @@ $trustPolicy = @'
 '@
 $trustPolicy | Out-File -FilePath trust-policy.json -Encoding ascii
 
-aws iam create-role --role-name ShamanthLambdaRole --assume-role-policy-document file://trust-policy.json
+aws iam create-role --role-name ShamanthLambdaRole --assume-role-policy-document file://trust-policy.json 2>$null
 aws iam attach-role-policy --role-name ShamanthLambdaRole --policy-arn arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
 aws iam attach-role-policy --role-name ShamanthLambdaRole --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
@@ -58,18 +68,19 @@ if (Test-Path function.zip) { Remove-Item function.zip }
 Compress-Archive -Path AWS_LAMBDA_PROXY.js -DestinationPath function.zip
 
 Write-Host "🚀 Deploying Lambda: Shamanth_Backend..." -ForegroundColor Yellow
-$accountId = aws sts get-caller-identity --query Account --output text
-
 Write-Host "⏳ Waiting for IAM permissions to propagate (15s)..." -ForegroundColor Gray
 Start-Sleep -Seconds 15
 
-$exists = aws lambda get-function --function-name Shamanth_Backend
+$lambdaRoleArn = "arn:aws:iam::$accountId:role/ShamanthLambdaRole"
+Write-Host "📍 Using Role: $lambdaRoleArn" -ForegroundColor Gray
+
+$exists = aws lambda get-function --function-name Shamanth_Backend 2>$null
 if ($LASTEXITCODE -ne 0) {
     Write-Host "✨ Creating new function..." -ForegroundColor Gray
     aws lambda create-function `
         --function-name Shamanth_Backend `
         --runtime nodejs18.x `
-        --role "arn:aws:iam::$accountId:role/ShamanthLambdaRole" `
+        --role "$lambdaRoleArn" `
         --handler AWS_LAMBDA_PROXY.handler `
         --zip-file fileb://function.zip
 } else {

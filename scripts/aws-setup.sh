@@ -1,8 +1,8 @@
 
 #!/bin/bash
 
-# Shamanth Academy - Verbose AWS Backend Setup
-# This script creates DynamoDB and Lambda resources with full error reporting.
+# Shamanth Academy - Professional AWS Backend Setup
+# This script creates DynamoDB and Lambda resources with robust error handling.
 
 echo "------------------------------------------"
 echo "🛠️ Starting Shamanth Academy AWS Setup..."
@@ -10,9 +10,22 @@ echo "------------------------------------------"
 
 # Check AWS Identity
 echo "👤 Checking AWS Identity..."
-aws sts get-caller-identity || { echo "❌ ERROR: AWS CLI not configured. Run 'aws configure' first."; exit 1; }
+IDENTITY_JSON=$(aws sts get-caller-identity --output json)
+if [ $? -ne 0 ]; then
+    echo "❌ ERROR: AWS CLI not configured. Run 'aws configure' first."
+    exit 1
+fi
 
+# Robust Account ID Extraction
+ACCOUNT_ID=$(echo $IDENTITY_JSON | grep -o '"Account": "[^"]*' | grep -o '[^"]*$')
 REGION=$(aws configure get region)
+
+if [ -z "$ACCOUNT_ID" ]; then
+    echo "❌ ERROR: Could not determine AWS Account ID."
+    exit 1
+fi
+
+echo "🆔 Account ID: $ACCOUNT_ID"
 echo "🌍 Target Region: $REGION"
 
 # 1. Create DynamoDB Table
@@ -21,7 +34,7 @@ aws dynamodb create-table \
     --table-name Shamanth_Users \
     --attribute-definitions AttributeName=id,AttributeType=S \
     --key-schema AttributeName=id,KeyType=HASH \
-    --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5
+    --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 2>/dev/null || echo "ℹ️ Table might already exist, skipping..."
 
 # 2. Setup IAM Role
 echo "🔐 Setting up IAM Roles..."
@@ -38,7 +51,7 @@ cat > trust-policy.json << EOF
 }
 EOF
 
-aws iam create-role --role-name ShamanthLambdaRole --assume-role-policy-document file://trust-policy.json
+aws iam create-role --role-name ShamanthLambdaRole --assume-role-policy-document file://trust-policy.json 2>/dev/null || echo "ℹ️ Role might already exist..."
 aws iam attach-role-policy --role-name ShamanthLambdaRole --policy-arn arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
 aws iam attach-role-policy --role-name ShamanthLambdaRole --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
@@ -47,16 +60,17 @@ echo "⚡ Zipping Lambda function..."
 zip -r function.zip AWS_LAMBDA_PROXY.js
 
 echo "🚀 Deploying Lambda: Shamanth_Backend..."
-ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text)
-
 echo "⏳ Waiting for IAM permissions to propagate (15s)..."
 sleep 15
 
 # Try to create, if it exists, update it
+LAMBDA_ROLE_ARN="arn:aws:iam::$ACCOUNT_ID:role/ShamanthLambdaRole"
+echo "📍 Using Role: $LAMBDA_ROLE_ARN"
+
 aws lambda create-function \
     --function-name Shamanth_Backend \
     --runtime nodejs18.x \
-    --role arn:aws:iam::$ACCOUNT_ID:role/ShamanthLambdaRole \
+    --role "$LAMBDA_ROLE_ARN" \
     --handler AWS_LAMBDA_PROXY.handler \
     --zip-file fileb://function.zip || \
 aws lambda update-function-code \
