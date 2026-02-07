@@ -15,6 +15,8 @@ import HeroCarousel from './components/HeroCarousel.tsx';
 
 type AppView = 'home' | 'admin' | 'info';
 
+const ITEMS_PER_PAGE = 8;
+
 const App: React.FC = () => {
   const [auth, setAuth] = useState<AuthState>({ user: null, isAuthenticated: false });
   const [courses, setCourses] = useState<Course[]>([]);
@@ -26,6 +28,9 @@ const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<AppView>('home');
   const [activeInfoTopic, setActiveInfoTopic] = useState<InfoTopic | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
   
   const coursesRef = useRef<HTMLDivElement>(null);
 
@@ -42,7 +47,6 @@ const App: React.FC = () => {
   useEffect(() => {
     const initApp = async () => {
       setIsLoading(true);
-      // CRITICAL: Initialize database to load CSV files into memory
       await db.initDatabase();
       await refreshCourseData();
       await refreshSettings();
@@ -51,12 +55,10 @@ const App: React.FC = () => {
     initApp();
   }, [refreshCourseData, refreshSettings]);
 
+  // Reset to page 1 when filter changes
   useEffect(() => {
-    if (currentView === 'home') {
-      refreshCourseData();
-      refreshSettings();
-    }
-  }, [currentView, refreshCourseData, refreshSettings]);
+    setCurrentPage(1);
+  }, [selectedCategory, searchQuery]);
 
   const handleLogin = (user: User) => {
     setAuth({ user, isAuthenticated: true });
@@ -97,6 +99,13 @@ const App: React.FC = () => {
     
     return matchesCategory && matchesSearch;
   });
+
+  // Calculate Paginated Courses
+  const totalPages = Math.ceil(filteredCourses.length / ITEMS_PER_PAGE);
+  const paginatedCourses = filteredCourses.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
 
   const refreshUserData = useCallback(async () => {
     if (auth.user) {
@@ -164,23 +173,71 @@ const App: React.FC = () => {
                    <i className="fa-solid fa-circle-notch animate-spin text-4xl text-indigo-600"></i>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-20">
-                  {filteredCourses.length > 0 ? (
-                    filteredCourses.map(course => (
-                      <CourseCard 
-                        key={course.id} 
-                        course={course} 
-                        user={auth.user}
-                        onClick={() => setActiveCourse(course)}
-                      />
-                    ))
-                  ) : (
-                    <div className="col-span-full py-20 text-center">
-                      <i className="fa-solid fa-face-frown text-5xl text-gray-200 mb-4"></i>
-                      <h3 className="text-xl font-bold text-gray-400">No courses found matching your quest.</h3>
+                <>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-8 mb-12">
+                    {paginatedCourses.length > 0 ? (
+                      paginatedCourses.map(course => (
+                        <CourseCard 
+                          key={course.id} 
+                          course={course} 
+                          user={auth.user}
+                          onClick={() => setActiveCourse(course)}
+                        />
+                      ))
+                    ) : (
+                      <div className="col-span-full py-20 text-center">
+                        <i className="fa-solid fa-face-frown text-5xl text-gray-200 mb-4"></i>
+                        <h3 className="text-xl font-bold text-gray-400">No courses found matching your quest.</h3>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Enhanced Pagination Controls */}
+                  {totalPages > 1 && (
+                    <div className="flex items-center justify-center gap-4 mb-20">
+                      <button
+                        disabled={currentPage === 1}
+                        onClick={() => {
+                          setCurrentPage(p => p - 1);
+                          scrollToCourses();
+                        }}
+                        className="w-12 h-12 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-30 disabled:hover:bg-white transition-all shadow-sm"
+                      >
+                        <i className="fa-solid fa-chevron-left"></i>
+                      </button>
+                      
+                      <div className="flex items-center gap-2">
+                        {Array.from({ length: totalPages }).map((_, i) => (
+                          <button
+                            key={i}
+                            onClick={() => {
+                              setCurrentPage(i + 1);
+                              scrollToCourses();
+                            }}
+                            className={`w-10 h-10 rounded-xl font-black text-xs transition-all ${
+                              currentPage === i + 1 
+                              ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
+                              : 'bg-white text-slate-400 border border-slate-100 hover:border-indigo-200'
+                            }`}
+                          >
+                            {i + 1}
+                          </button>
+                        ))}
+                      </div>
+
+                      <button
+                        disabled={currentPage === totalPages}
+                        onClick={() => {
+                          setCurrentPage(p => p + 1);
+                          scrollToCourses();
+                        }}
+                        className="w-12 h-12 rounded-xl bg-white border border-slate-100 flex items-center justify-center text-slate-400 hover:bg-indigo-50 hover:text-indigo-600 disabled:opacity-30 disabled:hover:bg-white transition-all shadow-sm"
+                      >
+                        <i className="fa-solid fa-chevron-right"></i>
+                      </button>
                     </div>
                   )}
-                </div>
+                </>
               )}
             </div>
           </>

@@ -1,7 +1,8 @@
 
 /**
  * AWS LAMBDA BACKEND (Node.js 18+)
- * Comprehensive persistence for Users, Courses, and Platform Settings.
+ * Comprehensive persistence for Users, Courses, Batches, and Platform Settings.
+ * This function acts as the single source of truth for all Shamanth Academy data.
  */
 
 const { DynamoDBClient } = require("@aws-sdk/client-dynamodb");
@@ -19,6 +20,7 @@ const TABLE_NAME = "Shamanth_Users";
 const SETTINGS_ID = "PLATFORM_CONFIG_GLOBAL";
 
 exports.handler = async (event) => {
+    // Handle CORS preflight
     if (event.httpMethod === 'OPTIONS') {
         return response(200, { message: "CORS Preflight OK" });
     }
@@ -38,7 +40,7 @@ exports.handler = async (event) => {
                     type: 'SETTINGS',
                     upiId: 'shamanth@okaxis',
                     contactNumber: '+91 9902122531',
-                    categories: ['React', 'Java', 'Python', 'AWS', 'Data Science'],
+                    categories: ['React', 'Java', 'Python', 'AWS', 'Data Science', 'Navodaya', 'RMS', 'Sainik School'],
                     flashNews: []
                 });
             }
@@ -75,6 +77,27 @@ exports.handler = async (event) => {
                 return response(200, { success: true });
             }
 
+            case 'getBatches': {
+                const data = await docClient.send(new ScanCommand({ TableName: TABLE_NAME }));
+                const batches = data.Items.filter(item => item.type === 'BATCH');
+                return response(200, batches);
+            }
+
+            case 'saveBatch': {
+                const batchItem = {
+                    ...body.batch,
+                    type: 'BATCH',
+                    updatedAt: new Date().toISOString()
+                };
+                await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: batchItem }));
+                return response(200, { success: true });
+            }
+
+            case 'deleteBatch': {
+                await docClient.send(new DeleteCommand({ TableName: TABLE_NAME, Key: { id: body.batchId } }));
+                return response(200, { success: true });
+            }
+
             case 'getAllUsers': {
                 const data = await docClient.send(new ScanCommand({ TableName: TABLE_NAME }));
                 const usersOnly = data.Items.filter(item => item.type === 'USER');
@@ -82,7 +105,6 @@ exports.handler = async (event) => {
             }
                 
             case 'register': {
-                // Check if user already exists in cloud
                 const scanData = await docClient.send(new ScanCommand({ TableName: TABLE_NAME }));
                 const existing = scanData.Items.find(u => u.type === 'USER' && u.email === body.email);
                 
@@ -116,15 +138,10 @@ exports.handler = async (event) => {
                 return response(401, { error: "Invalid credentials" });
             }
 
-            case 'deleteUser': {
-                await docClient.send(new DeleteCommand({ TableName: TABLE_NAME, Key: { id: body.userId } }));
-                return response(200, { success: true });
-            }
-
             case 'requestUnlock': {
                 const { Item: user } = await docClient.send(new GetCommand({ TableName: TABLE_NAME, Key: { id: body.userId } }));
-                if (user && !user.pendingUnlocks.includes(body.courseId)) {
-                    user.pendingUnlocks.push(body.courseId);
+                if (user) {
+                    user.pendingUnlocks = [...new Set([...(user.pendingUnlocks || []), body.courseId])];
                     user.lastActive = new Date().toISOString();
                     await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: user }));
                 }
@@ -134,21 +151,10 @@ exports.handler = async (event) => {
             case 'approveUnlock': {
                 const { Item: seeker } = await docClient.send(new GetCommand({ TableName: TABLE_NAME, Key: { id: body.userId } }));
                 if (seeker) {
-                    seeker.enrolledCourses = [...new Set([...seeker.enrolledCourses, body.courseId])];
-                    seeker.pendingUnlocks = seeker.pendingUnlocks.filter(id => id !== body.courseId);
+                    seeker.enrolledCourses = [...new Set([...(seeker.enrolledCourses || []), body.courseId])];
+                    seeker.pendingUnlocks = (seeker.pendingUnlocks || []).filter(id => id !== body.courseId);
                     seeker.enrollmentDates = seeker.enrollmentDates || {};
                     seeker.enrollmentDates[body.courseId] = new Date().toISOString();
-                    seeker.lastActive = new Date().toISOString();
-                    await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: seeker }));
-                }
-                return response(200, { success: true });
-            }
-
-            case 'lockCourse': {
-                const { Item: seeker } = await docClient.send(new GetCommand({ TableName: TABLE_NAME, Key: { id: body.userId } }));
-                if (seeker) {
-                    seeker.enrolledCourses = seeker.enrolledCourses.filter(id => id !== body.courseId);
-                    if (seeker.enrollmentDates) delete seeker.enrollmentDates[body.courseId];
                     seeker.lastActive = new Date().toISOString();
                     await docClient.send(new PutCommand({ TableName: TABLE_NAME, Item: seeker }));
                 }

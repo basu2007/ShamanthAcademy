@@ -130,6 +130,35 @@ const AdminDashboard: React.FC = () => {
     await db.saveSettings(updated);
   };
 
+  const exportCourses = () => {
+    const csv = db.toCSV(courses);
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'courses_backup.csv';
+    a.click();
+  };
+
+  const handleImportCourses = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target?.result as string;
+      const data = db.fromCSV(text);
+      if (data.length > 0) {
+        if (confirm(`Import ${data.length} courses? This will merge with existing ones.`)) {
+          for (const c of data) {
+            await db.saveCourse(c as Course);
+          }
+          refreshData();
+        }
+      }
+    };
+    reader.readAsText(file);
+  };
+
   const pendingRequests = users.flatMap(user => 
     (user.pendingUnlocks || []).map(courseId => ({
       userId: user.id, userEmail: user.email, courseId,
@@ -151,7 +180,9 @@ const AdminDashboard: React.FC = () => {
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6 mb-12">
         <div>
           <h1 className="text-4xl font-black text-slate-900 tracking-tighter mb-2">Command Center</h1>
-          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">Application Private Folder Synchronized</p>
+          <p className="text-slate-400 text-xs font-bold uppercase tracking-widest">
+            {db.isCloudEnabled() ? '✅ Cloud Sync Active' : 'Application Private Folder Synchronized'}
+          </p>
         </div>
         
         <nav className="flex bg-white p-1 rounded-2xl shadow-xl border border-slate-100 flex-wrap">
@@ -200,18 +231,40 @@ const AdminDashboard: React.FC = () => {
       {activeTab === 'settings' && (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-in slide-in-from-bottom-4">
           <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-50 flex flex-col justify-between">
-            <h3 className="text-xl font-black text-slate-900 mb-8 flex items-center gap-3">
-              <i className="fa-solid fa-qrcode text-indigo-600"></i>
-              Payment QR Gateway
-            </h3>
-            <div className="flex flex-col items-center gap-6">
-              <div className="w-64 h-64 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2.5rem] flex items-center justify-center overflow-hidden shadow-inner">
-                {settings?.paymentQrCode ? <img src={settings.paymentQrCode} className="w-full h-full object-contain" /> : <i className="fa-solid fa-camera text-6xl text-slate-200"></i>}
+            <div>
+              <div className="flex justify-between items-center mb-8">
+                <h3 className="text-xl font-black text-slate-900 flex items-center gap-3">
+                  <i className="fa-solid fa-qrcode text-indigo-600"></i>
+                  Payment QR Gateway
+                </h3>
+                <div className={`px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest ${db.isCloudEnabled() ? 'bg-emerald-50 text-emerald-600' : 'bg-amber-50 text-amber-600'}`}>
+                  {db.isCloudEnabled() ? 'Cloud Linked' : 'Local Mode'}
+                </div>
               </div>
-              <input type="file" id="qr-upload" hidden accept="image/*" onChange={handleQrUpload} />
-              <label htmlFor="qr-upload" className="cursor-pointer bg-slate-900 hover:bg-indigo-700 text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-xl">
-                Upload New QR Code
-              </label>
+              <div className="flex flex-col items-center gap-6">
+                <div className="w-64 h-64 bg-slate-50 border-2 border-dashed border-slate-200 rounded-[2.5rem] flex items-center justify-center overflow-hidden shadow-inner">
+                  {settings?.paymentQrCode ? <img src={settings.paymentQrCode} className="w-full h-full object-contain" /> : <i className="fa-solid fa-camera text-6xl text-slate-200"></i>}
+                </div>
+                <input type="file" id="qr-upload" hidden accept="image/*" onChange={handleQrUpload} />
+                <label htmlFor="qr-upload" className="cursor-pointer bg-slate-900 hover:bg-indigo-700 text-white px-10 py-4 rounded-2xl font-black text-[10px] uppercase tracking-widest transition-all shadow-xl">
+                  Upload New QR Code
+                </label>
+              </div>
+            </div>
+
+            <div className="mt-12 pt-8 border-t border-slate-50">
+              <h3 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-3">
+                <i className="fa-solid fa-file-export text-indigo-600"></i>
+                Data Portability
+              </h3>
+              <p className="text-[10px] text-slate-400 font-bold uppercase mb-6">Sync your data manually if Cloud is not active.</p>
+              <div className="flex flex-col sm:flex-row gap-4">
+                <button onClick={exportCourses} className="flex-1 bg-white border border-indigo-600 text-indigo-600 py-3 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-50 transition-all">Export CSV</button>
+                <label className="flex-1 bg-indigo-600 text-white py-3 rounded-xl font-black text-[10px] uppercase tracking-widest text-center cursor-pointer hover:bg-indigo-700 shadow-lg shadow-indigo-100">
+                  Import CSV
+                  <input type="file" hidden accept=".csv" onChange={handleImportCourses} />
+                </label>
+              </div>
             </div>
           </div>
           
@@ -346,7 +399,9 @@ const AdminDashboard: React.FC = () => {
             <div className="flex justify-between items-start mb-8">
               <div>
                 <h2 className="text-2xl font-black text-slate-900">{isEditMode ? 'Update Existing Course' : 'Push New Course'}</h2>
-                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Syncing with courses.csv</p>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">
+                  {db.isCloudEnabled() ? 'Syncing with DynamoDB' : 'Syncing with courses.csv'}
+                </p>
               </div>
               <button onClick={() => setShowCourseForm(false)} className="text-slate-300 hover:text-red-500"><i className="fa-solid fa-circle-xmark text-2xl"></i></button>
             </div>
@@ -408,7 +463,7 @@ const AdminDashboard: React.FC = () => {
             </div>
 
             <button onClick={handleSaveCourse} className="w-full bg-slate-900 hover:bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl transition-all">
-               {isEditMode ? 'Commit Changes' : 'Update courses.csv'}
+               {isEditMode ? 'Commit Changes' : 'Publish to Academy'}
             </button>
           </div>
         </div>
@@ -430,7 +485,7 @@ const AdminDashboard: React.FC = () => {
                 <input type="text" placeholder="Timings" value={editingBatch.timings} onChange={e => setEditingBatch({...editingBatch, timings: e.target.value})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
               </div>
             </div>
-            <button onClick={async () => { await db.saveBatch({ ...editingBatch, id: editingBatch.id || `b_${Date.now()}` } as Batch); setShowBatchForm(false); refreshData(); }} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl">Update batches.csv</button>
+            <button onClick={async () => { await db.saveBatch({ ...editingBatch, id: editingBatch.id || `b_${Date.now()}` } as Batch); setShowBatchForm(false); refreshData(); }} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl">Confirm Schedule</button>
           </div>
         </div>
       )}
