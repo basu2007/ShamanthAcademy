@@ -15,7 +15,7 @@ let memory_settings: PlatformSettings = {
   paymentQrCode: null,
   upiId: 'shamanth@okaxis',
   contactNumber: '+91 9902122531',
-  categories: ['React', 'Java', 'Python', 'AWS', 'Data Science'],
+  categories: ['React', 'Java', 'Python', 'AWS', 'Data Science', 'Navodaya', 'RMS', 'Sainik School'],
   flashNews: ['System: Application Private Folder Active']
 };
 

@@ -1,7 +1,7 @@
 
 import { Course } from './types';
 
-export const CATEGORIES = ['All', 'React', 'Java', 'Python', 'AWS', 'Data Science'];
+export const CATEGORIES = ['All', 'React', 'Java', 'Python', 'AWS', 'Data Science', 'Navodaya', 'RMS', 'Sainik School'];
 
 /**
  * ADMIN ACCESS CREDENTIALS

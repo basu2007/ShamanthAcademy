@@ -20,6 +20,7 @@ const AdminDashboard: React.FC = () => {
 
   // Module addition state
   const [newVideo, setNewVideo] = useState<Partial<Video>>({ title: '', url: '', duration: '10:00' });
+  const [newCategory, setNewCategory] = useState('');
 
   useEffect(() => {
     const startup = async () => {
@@ -105,9 +106,28 @@ const AdminDashboard: React.FC = () => {
   };
 
   const openCourseCreate = () => {
-    setEditingCourse({ videos: [], price: 4999, category: 'General' });
+    setEditingCourse({ videos: [], price: 4999, category: settings?.categories[0] || 'General' });
     setIsEditMode(false);
     setShowCourseForm(true);
+  };
+
+  const handleAddCategory = async () => {
+    if (!newCategory.trim() || !settings) return;
+    if (settings.categories.includes(newCategory.trim())) {
+      alert("Category already exists.");
+      return;
+    }
+    const updated = { ...settings, categories: [...settings.categories, newCategory.trim()] };
+    setSettings(updated);
+    await db.saveSettings(updated);
+    setNewCategory('');
+  };
+
+  const handleRemoveCategory = async (cat: string) => {
+    if (!settings || !window.confirm(`Delete category "${cat}"? Courses in this category will still exist but will be filtered under "All".`)) return;
+    const updated = { ...settings, categories: settings.categories.filter(c => c !== cat) };
+    setSettings(updated);
+    await db.saveSettings(updated);
   };
 
   const pendingRequests = users.flatMap(user => 
@@ -194,14 +214,54 @@ const AdminDashboard: React.FC = () => {
               </label>
             </div>
           </div>
-          <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-50 space-y-6">
-            <h3 className="text-xl font-black text-slate-900 mb-4 flex items-center gap-3">
-               <i className="fa-solid fa-building text-indigo-600"></i>
-               Merchant Details
-            </h3>
-            <div className="space-y-4">
-              <div><label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Business UPI ID</label><input type="text" value={settings?.upiId} onChange={async (e) => { if(!settings) return; const s = {...settings, upiId: e.target.value}; setSettings(s); await db.saveSettings(s); }} className="w-full mt-1 p-4 bg-slate-50 rounded-xl font-bold outline-none focus:ring-2 ring-indigo-500/20" /></div>
-              <div><label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Support Contact</label><input type="text" value={settings?.contactNumber} onChange={async (e) => { if(!settings) return; const s = {...settings, contactNumber: e.target.value}; setSettings(s); await db.saveSettings(s); }} className="w-full mt-1 p-4 bg-slate-50 rounded-xl font-bold outline-none focus:ring-2 ring-indigo-500/20" /></div>
+          
+          <div className="bg-white p-10 rounded-[2.5rem] shadow-xl border border-slate-50 space-y-8 flex flex-col">
+            <div>
+                <h3 className="text-xl font-black text-slate-900 mb-4 flex items-center gap-3">
+                <i className="fa-solid fa-building text-indigo-600"></i>
+                Merchant Details
+                </h3>
+                <div className="space-y-4">
+                <div><label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Business UPI ID</label><input type="text" value={settings?.upiId} onChange={async (e) => { if(!settings) return; const s = {...settings, upiId: e.target.value}; setSettings(s); await db.saveSettings(s); }} className="w-full mt-1 p-4 bg-slate-50 rounded-xl font-bold outline-none focus:ring-2 ring-indigo-500/20" /></div>
+                <div><label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Support Contact</label><input type="text" value={settings?.contactNumber} onChange={async (e) => { if(!settings) return; const s = {...settings, contactNumber: e.target.value}; setSettings(s); await db.saveSettings(s); }} className="w-full mt-1 p-4 bg-slate-50 rounded-xl font-bold outline-none focus:ring-2 ring-indigo-500/20" /></div>
+                </div>
+            </div>
+
+            <div>
+                <h3 className="text-xl font-black text-slate-900 mb-4 flex items-center gap-3">
+                <i className="fa-solid fa-tags text-indigo-600"></i>
+                Manage Categories
+                </h3>
+                <div className="space-y-4">
+                    <div className="flex gap-2">
+                        <input 
+                            type="text" 
+                            placeholder="e.g. Navodaya" 
+                            value={newCategory} 
+                            onChange={e => setNewCategory(e.target.value)}
+                            className="flex-grow p-4 bg-slate-50 rounded-xl font-bold outline-none focus:ring-2 ring-indigo-500/20 text-sm"
+                        />
+                        <button 
+                            onClick={handleAddCategory}
+                            className="bg-indigo-600 text-white px-6 rounded-xl font-black text-[10px] uppercase shadow-lg active:scale-95 transition-all"
+                        >
+                            Add
+                        </button>
+                    </div>
+                    <div className="flex flex-wrap gap-2 max-h-48 overflow-y-auto p-2 bg-slate-50 rounded-xl">
+                        {settings?.categories.map(cat => (
+                            <div key={cat} className="bg-white border border-slate-200 px-3 py-1.5 rounded-lg flex items-center gap-3 shadow-sm group">
+                                <span className="text-xs font-bold text-slate-600">{cat}</span>
+                                <button 
+                                    onClick={() => handleRemoveCategory(cat)}
+                                    className="text-slate-300 hover:text-red-500 transition-colors"
+                                >
+                                    <i className="fa-solid fa-circle-xmark"></i>
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </div>
           </div>
         </div>
