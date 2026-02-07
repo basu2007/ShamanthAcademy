@@ -2,7 +2,12 @@
 import { User, PlatformSettings, Course, Batch } from '../types';
 import { ADMIN_CREDENTIALS, MOCK_COURSES } from '../constants';
 
-let directoryHandle: FileSystemDirectoryHandle | null = null;
+/**
+ * SHAMANTH ACADEMY: AUTO-CSV ENGINE (OPFS)
+ * This engine uses the Origin Private File System to manage CSVs automatically.
+ */
+
+let rootHandle: FileSystemDirectoryHandle | null = null;
 let memory_users: User[] = [];
 let memory_courses: Course[] = [...MOCK_COURSES];
 let memory_batches: Batch[] = [];
@@ -11,12 +16,12 @@ let memory_settings: PlatformSettings = {
   upiId: 'shamanth@okaxis',
   contactNumber: '+91 9902122531',
   categories: ['React', 'Java', 'Python', 'AWS', 'Data Science'],
-  flashNews: ['System Active: Local CSV Database Engaged']
+  flashNews: ['System: Application Private Folder Active']
 };
 
 // Helper: Object Array to CSV
 const toCSV = (data: any[]) => {
-  if (data.length === 0) return '';
+  if (!data || data.length === 0) return '';
   const headers = Object.keys(data[0]).join(',');
   const rows = data.map(obj => 
     Object.values(obj).map(val => {
@@ -52,34 +57,33 @@ const fromCSV = (csv: string): any[] => {
 };
 
 const writeToDisk = async (fileName: string, content: string) => {
-  if (!directoryHandle) return;
+  if (!rootHandle) rootHandle = await navigator.storage.getDirectory();
   try {
-    const fileHandle = await directoryHandle.getFileHandle(fileName, { create: true });
+    const fileHandle = await rootHandle.getFileHandle(fileName, { create: true });
+    // @ts-ignore
     const writable = await fileHandle.createWritable();
     await writable.write(content);
     await writable.close();
-  } catch (err) { console.error(`Disk Error: ${fileName}`, err); }
+  } catch (err) { console.error(`Write Error: ${fileName}`, err); }
 };
 
-export const mountDisk = async (): Promise<boolean> => {
+export const initDatabase = async (): Promise<boolean> => {
   try {
-    // @ts-ignore
-    directoryHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
-    if (!directoryHandle) return false;
-
+    rootHandle = await navigator.storage.getDirectory();
     const files = ['users.csv', 'courses.csv', 'batches.csv', 'settings.csv'];
+    
     for (const f of files) {
       try {
-        const handle = await directoryHandle.getFileHandle(f);
+        const handle = await rootHandle.getFileHandle(f);
         const file = await handle.getFile();
         const text = await file.text();
         const data = fromCSV(text);
-        if (f === 'users.csv') memory_users = data;
-        if (f === 'courses.csv') memory_courses = data.length ? data : MOCK_COURSES;
-        if (f === 'batches.csv') memory_batches = data;
-        if (f === 'settings.csv') memory_settings = data[0] || memory_settings;
+        if (f === 'users.csv' && data.length) memory_users = data;
+        if (f === 'courses.csv' && data.length) memory_courses = data;
+        if (f === 'batches.csv' && data.length) memory_batches = data;
+        if (f === 'settings.csv' && data.length) memory_settings = data[0];
       } catch (e) {
-        console.log(`Creating ${f}...`);
+        console.log(`Auto-creating ${f}...`);
         await syncFile(f);
       }
     }
@@ -109,7 +113,7 @@ export const registerUser = async (email: string, pin: string) => {
 };
 
 export const loginUser = async (email: string, pin: string) => {
-  if (email === ADMIN_CREDENTIALS.email && pin === ADMIN_CREDENTIALS.pin) {
+  if (email.trim().toLowerCase() === ADMIN_CREDENTIALS.email && pin === ADMIN_CREDENTIALS.pin) {
     return { id: 'admin', email: ADMIN_CREDENTIALS.email, pin: ADMIN_CREDENTIALS.pin, role: 'ADMIN', enrolledCourses: [], pendingUnlocks: [] } as User;
   }
   return memory_users.find(u => u.email === email.trim().toLowerCase() && u.pin === pin) || null;
