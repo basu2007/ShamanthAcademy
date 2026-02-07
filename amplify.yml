@@ -1,3 +1,4 @@
+
 version: 1
 frontend:
   phases:
@@ -6,19 +7,7 @@ frontend:
         - npm install
     build:
       commands:
-        - echo "🚀 Building Shamanth Academy..."
-        # 1. Inject API Gateway URL from Amplify Environment Variable
-        - |
-          if [ ! -z "$BACKEND_API_URL" ]; then
-            echo "✅ BACKEND_API_URL detected. Injecting into build..."
-            # Use | as delimiter for sed to handle slashes in URLs safely
-            sed -i "s|INSERT_AWS_API_URL_HERE|$BACKEND_API_URL|g" services/db.ts
-            echo "🔗 API Target set successfully."
-          else
-            echo "⚠️ Warning: BACKEND_API_URL environment variable is missing."
-            echo "👉 Go to: Amplify Console > App Settings > Environment Variables and add BACKEND_API_URL."
-          fi
-        # 2. Run the custom build script
+        - echo "🚀 Building Shamanth Academy CSV Edition..."
         - node build.js
   artifacts:
     baseDirectory: dist

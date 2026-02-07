@@ -42,22 +42,8 @@ const App: React.FC = () => {
   useEffect(() => {
     const initApp = async () => {
       setIsLoading(true);
-      
-      // Load session
-      const saved = localStorage.getItem('active_session');
-      if (saved) {
-        try {
-          const user = JSON.parse(saved) as User;
-          const users = await db.getStoredUsers();
-          const freshUser = users.find(u => u.id === user.id);
-          if (freshUser) {
-            setAuth({ user: freshUser, isAuthenticated: true });
-          }
-        } catch (e) {
-          console.error("Session recovery failed", e);
-        }
-      }
-
+      // No localStorage recovery here anymore.
+      // Every refresh is a clean state.
       await refreshCourseData();
       await refreshSettings();
       setIsLoading(false);
@@ -65,7 +51,6 @@ const App: React.FC = () => {
     initApp();
   }, [refreshCourseData, refreshSettings]);
 
-  // Re-fetch courses whenever we navigate back to home to ensure admin changes are visible
   useEffect(() => {
     if (currentView === 'home') {
       refreshCourseData();
@@ -75,13 +60,11 @@ const App: React.FC = () => {
 
   const handleLogin = (user: User) => {
     setAuth({ user, isAuthenticated: true });
-    localStorage.setItem('active_session', JSON.stringify(user));
     setShowAuthModal(false);
   };
 
   const handleLogout = () => {
     setAuth({ user: null, isAuthenticated: false });
-    localStorage.removeItem('active_session');
     setCurrentView('home');
   };
 
@@ -120,7 +103,6 @@ const App: React.FC = () => {
     }
   }, [auth.user]);
 
-  // Derive categories for filter bar (Always include 'All')
   const availableCategories = ['All', ...(settings?.categories || [])];
 
   return (

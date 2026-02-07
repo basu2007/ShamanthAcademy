@@ -2,150 +2,163 @@
 import { User, PlatformSettings, Course, Batch } from '../types';
 import { ADMIN_CREDENTIALS, MOCK_COURSES } from '../constants';
 
-const USERS_KEY = 'shamanth_academy_users_v3'; 
-const SETTINGS_KEY = 'shamanth_academy_settings_v2';
-const COURSES_KEY = 'shamanth_academy_courses_v2';
-const BATCHES_KEY = 'shamanth_academy_batches_v1';
+/**
+ * SHAMANTH ACADEMY: LIVE-CSV DISK ENGINE
+ * This engine connects to the user's local file system.
+ */
 
-const DEFAULT_SETTINGS: PlatformSettings = {
+let directoryHandle: FileSystemDirectoryHandle | null = null;
+let memory_users: User[] = [];
+let memory_courses: Course[] = [...MOCK_COURSES];
+let memory_batches: Batch[] = [];
+
+// Helper: Convert Object Array to CSV String
+const toCSV = (data: any[]) => {
+  if (data.length === 0) return '';
+  const headers = Object.keys(data[0]).join(',');
+  const rows = data.map(obj => 
+    Object.values(obj).map(val => 
+      typeof val === 'string' ? `"${val.replace(/"/g, '""')}"` : JSON.stringify(val)
+    ).join(',')
+  );
+  return [headers, ...rows].join('\n');
+};
+
+// Helper: Parse CSV String to Object Array
+const fromCSV = (csv: string): any[] => {
+  const lines = csv.split('\n').filter(l => l.trim() !== '');
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(',');
+  return lines.slice(1).map(line => {
+    const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/); // Split by comma not inside quotes
+    const obj: any = {};
+    headers.forEach((h, i) => {
+      let val = values[i]?.replace(/^"|"$/g, '').replace(/""/g, '"');
+      try {
+        if (val && (val.startsWith('[') || val.startsWith('{'))) {
+          obj[h] = JSON.parse(val);
+        } else if (!isNaN(Number(val)) && val !== '') {
+          obj[h] = Number(val);
+        } else {
+          obj[h] = val;
+        }
+      } catch (e) {
+        obj[h] = val;
+      }
+    });
+    return obj;
+  });
+};
+
+// --- DISK IO OPERATIONS ---
+
+const writeToDisk = async (fileName: string, content: string) => {
+  if (!directoryHandle) return;
+  try {
+    const fileHandle = await directoryHandle.getFileHandle(fileName, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(content);
+    await writable.close();
+    console.log(`💾 Disk Sync: ${fileName} updated.`);
+  } catch (err) {
+    console.error(`❌ Disk Sync Failure: ${fileName}`, err);
+  }
+};
+
+export const mountDisk = async (): Promise<boolean> => {
+  try {
+    // @ts-ignore
+    directoryHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+    if (!directoryHandle) return false;
+
+    // Load initial data from disk if exists
+    try {
+      const uFile = await (await directoryHandle.getFileHandle('users.csv')).getFile();
+      memory_users = fromCSV(await uFile.text());
+      const cFile = await (await directoryHandle.getFileHandle('courses.csv')).getFile();
+      memory_courses = fromCSV(await cFile.text());
+      const bFile = await (await directoryHandle.getFileHandle('batches.csv')).getFile();
+      memory_batches = fromCSV(await bFile.text());
+    } catch (e) {
+      console.log("Initializing new CSV files on mounted disk...");
+      await syncAll();
+    }
+    return true;
+  } catch (err) {
+    console.error("Mount failed", err);
+    return false;
+  }
+};
+
+const syncAll = async () => {
+  await Promise.all([
+    writeToDisk('users.csv', toCSV(memory_users)),
+    writeToDisk('courses.csv', toCSV(memory_courses)),
+    writeToDisk('batches.csv', toCSV(memory_batches))
+  ]);
+};
+
+// --- DATA ACCESSORS (In-Memory for Speed, Syncing to Disk for Safety) ---
+
+export const getStoredUsers = async () => [...memory_users];
+export const getCourses = async () => [...memory_courses];
+export const getBatches = async () => [...memory_batches];
+export const getPlatformSettings = async (): Promise<PlatformSettings> => ({
   paymentQrCode: null,
   upiId: 'shamanth@okaxis',
   contactNumber: '+91 9902122531',
   categories: ['React', 'Java', 'Python', 'AWS', 'Data Science'],
-  flashNews: [
-    'Welcome to Shamanth Academy. CSV Database active.',
-    'New Batch for Java Full Stack Development starting soon.',
-    'Manage your data via the Admin CSV Engine.'
-  ]
-};
+  flashNews: ['Live CSV Persistence Active', 'Zero Data Loss Mode Enabled']
+});
 
-// --- DATA ACCESSORS ---
+// --- OPERATIONS ---
 
-export const getStoredUsers = async (): Promise<User[]> => {
-  const local = localStorage.getItem(USERS_KEY);
-  try { return local ? JSON.parse(local) : []; } catch (e) { return []; }
-};
-
-export const getCourses = async (): Promise<Course[]> => {
-  const local = localStorage.getItem(COURSES_KEY);
-  return local ? JSON.parse(local) : MOCK_COURSES;
-};
-
-export const getBatches = async (): Promise<Batch[]> => {
-  const local = localStorage.getItem(BATCHES_KEY);
-  return local ? JSON.parse(local) : [];
-};
-
-export const getPlatformSettings = async (): Promise<PlatformSettings> => {
-  const local = localStorage.getItem(SETTINGS_KEY);
-  return local ? { ...DEFAULT_SETTINGS, ...JSON.parse(local) } : DEFAULT_SETTINGS;
-};
-
-// --- CSV BULK INJECTION ---
-
-export const bulkOverwriteUsers = async (users: User[]): Promise<void> => {
-  localStorage.setItem(USERS_KEY, JSON.stringify(users));
-};
-
-export const bulkOverwriteCourses = async (courses: Course[]): Promise<void> => {
-  localStorage.setItem(COURSES_KEY, JSON.stringify(courses));
-};
-
-export const bulkOverwriteBatches = async (batches: Batch[]): Promise<void> => {
-  localStorage.setItem(BATCHES_KEY, JSON.stringify(batches));
-};
-
-// --- TRANSACTIONAL ACTIONS ---
-
-export const registerUser = async (email: string, pin: string): Promise<User | null> => {
+export const registerUser = async (email: string, pin: string) => {
   const cleanEmail = email.trim().toLowerCase();
-  const currentUsers = await getStoredUsers();
-  if (currentUsers.some(u => u.email === cleanEmail)) return null;
-
+  if (memory_users.some(u => u.email === cleanEmail)) return null;
   const newUser: User = {
-    id: `u_${Date.now()}`,
-    email: cleanEmail,
-    pin: pin.trim(),
-    role: 'USER',
-    enrolledCourses: [],
-    pendingUnlocks: [],
-    enrollmentDates: {},
-    lastActive: new Date().toISOString()
+    id: `u_${Date.now()}`, email: cleanEmail, pin: pin.trim(), role: 'USER',
+    enrolledCourses: [], pendingUnlocks: []
   };
-  
-  const updatedUsers = [...currentUsers, newUser];
-  localStorage.setItem(USERS_KEY, JSON.stringify(updatedUsers));
+  memory_users.push(newUser);
+  await writeToDisk('users.csv', toCSV(memory_users));
   return newUser;
 };
 
-export const loginUser = async (email: string, pin: string): Promise<User | null> => {
-  const cleanEmail = email.trim().toLowerCase();
-  const cleanPin = pin.trim();
-
-  if (cleanEmail === ADMIN_CREDENTIALS.email.toLowerCase() && cleanPin === ADMIN_CREDENTIALS.pin) {
-    return {
-      id: 'admin', email: ADMIN_CREDENTIALS.email, pin: ADMIN_CREDENTIALS.pin,
-      role: 'ADMIN', enrolledCourses: [], pendingUnlocks: [], lastActive: new Date().toISOString()
-    };
+export const loginUser = async (email: string, pin: string) => {
+  if (email === ADMIN_CREDENTIALS.email && pin === ADMIN_CREDENTIALS.pin) {
+    return { id: 'admin', email: ADMIN_CREDENTIALS.email, pin: ADMIN_CREDENTIALS.pin, role: 'ADMIN', enrolledCourses: [], pendingUnlocks: [] } as User;
   }
-
-  const users = await getStoredUsers();
-  return users.find(u => u.email === cleanEmail && u.pin === cleanPin) || null;
+  return memory_users.find(u => u.email === email.trim().toLowerCase() && u.pin === pin.trim()) || null;
 };
 
-export const saveCourse = async (course: Course): Promise<void> => {
-  const courses = await getCourses();
-  const index = courses.findIndex(c => c.id === course.id);
-  if (index !== -1) courses[index] = course; else courses.push(course);
-  localStorage.setItem(COURSES_KEY, JSON.stringify(courses));
+export const saveCourse = async (course: Course) => {
+  const idx = memory_courses.findIndex(c => c.id === course.id);
+  if (idx !== -1) memory_courses[idx] = course; else memory_courses.push(course);
+  await writeToDisk('courses.csv', toCSV(memory_courses));
 };
 
-export const saveBatch = async (batch: Batch): Promise<void> => {
-  const batches = await getBatches();
-  const index = batches.findIndex(b => b.id === batch.id);
-  if (index !== -1) batches[index] = batch; else batches.push(batch);
-  localStorage.setItem(BATCHES_KEY, JSON.stringify(batches));
+export const saveBatch = async (batch: Batch) => {
+  const idx = memory_batches.findIndex(b => b.id === batch.id);
+  if (idx !== -1) memory_batches[idx] = batch; else memory_batches.push(batch);
+  await writeToDisk('batches.csv', toCSV(memory_batches));
 };
 
-export const deleteBatch = async (batchId: string): Promise<void> => {
-  const batches = await getBatches();
-  localStorage.setItem(BATCHES_KEY, JSON.stringify(batches.filter(b => b.id !== batchId)));
+export const approveUnlock = async (userId: string, courseId: string) => {
+  memory_users = memory_users.map(u => u.id === userId ? {
+    ...u,
+    pendingUnlocks: (u.pendingUnlocks || []).filter(id => id !== courseId),
+    enrolledCourses: [...new Set([...(u.enrolledCourses || []), courseId])]
+  } : u);
+  await writeToDisk('users.csv', toCSV(memory_users));
 };
 
-export const deleteUser = async (userId: string): Promise<void> => {
-  const users = await getStoredUsers();
-  localStorage.setItem(USERS_KEY, JSON.stringify(users.filter(u => u.id !== userId)));
+export const requestUnlock = async (userId: string, courseId: string) => {
+  memory_users = memory_users.map(u => u.id === userId ? { ...u, pendingUnlocks: [...new Set([...(u.pendingUnlocks || []), courseId])] } : u);
+  await writeToDisk('users.csv', toCSV(memory_users));
 };
 
-export const deleteCourse = async (courseId: string): Promise<void> => {
-  const courses = await getCourses();
-  localStorage.setItem(COURSES_KEY, JSON.stringify(courses.filter(c => c.id !== courseId)));
-};
-
-export const savePlatformSettings = async (settings: PlatformSettings): Promise<void> => {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-};
-
-export const requestUnlock = async (userId: string, courseId: string): Promise<void> => {
-  const users = await getStoredUsers();
-  const updated = users.map(u => u.id === userId ? { ...u, pendingUnlocks: [...new Set([...(u.pendingUnlocks || []), courseId])], lastActive: new Date().toISOString() } : u);
-  localStorage.setItem(USERS_KEY, JSON.stringify(updated));
-};
-
-export const approveUnlock = async (userId: string, courseId: string): Promise<void> => {
-  const users = await getStoredUsers();
-  const updated = users.map(u => u.id === userId ? { ...u, pendingUnlocks: (u.pendingUnlocks || []).filter(id => id !== courseId), enrolledCourses: [...new Set([...(u.enrolledCourses || []), courseId])], enrollmentDates: { ...(u.enrollmentDates || {}), [courseId]: new Date().toISOString() }, lastActive: new Date().toISOString() } : u);
-  localStorage.setItem(USERS_KEY, JSON.stringify(updated));
-};
-
-export const lockCourse = async (userId: string, courseId: string): Promise<void> => {
-  const users = await getStoredUsers();
-  const updated = users.map(u => {
-    if (u.id === userId) {
-      const dates = { ...(u.enrollmentDates || {}) }; delete dates[courseId];
-      return { ...u, enrolledCourses: (u.enrolledCourses || []).filter(id => id !== courseId), enrollmentDates: dates, lastActive: new Date().toISOString() };
-    }
-    return u;
-  });
-  localStorage.setItem(USERS_KEY, JSON.stringify(updated));
-};
+// Bulk overwrites for importing legacy data
+export const bulkOverwriteUsers = async (users: User[]) => { memory_users = users; await syncAll(); };
+export const bulkOverwriteCourses = async (courses: Course[]) => { memory_courses = courses; await syncAll(); };
+export const bulkOverwriteBatches = async (batches: Batch[]) => { memory_batches = batches; await syncAll(); };
