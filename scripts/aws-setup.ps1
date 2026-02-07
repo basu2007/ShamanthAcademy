@@ -1,29 +1,23 @@
 
-# Shamanth Academy - Verbose AWS Backend Setup (Windows)
+# Shamanth Academy - Professional AWS Backend Setup (Windows)
 
 Write-Host "`n🚀 Initializing Shamanth Academy Setup Script..." -ForegroundColor Cyan
 
-# 0. Check AWS Configuration
-Write-Host "👤 Checking AWS Identity..." -ForegroundColor Gray
-$identityJson = aws sts get-caller-identity --output json
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ ERROR: AWS CLI is not configured or credentials expired." -ForegroundColor Red
-    Write-Host "👉 Run 'aws configure' to set your access keys." -ForegroundColor Yellow
-    exit
-}
-
-# Parse JSON for reliable ID extraction
-$identity = $identityJson | ConvertFrom-Json
-$accountId = $identity.Account
+# 0. Check AWS Identity and Region
+Write-Host "👤 Fetching AWS Account Identity..." -ForegroundColor Gray
+$accountId = aws sts get-caller-identity --query "Account" --output text
 $region = aws configure get region
 
-if ([string]::IsNullOrWhiteSpace($accountId)) {
-    Write-Host "❌ ERROR: Could not extract Account ID from AWS." -ForegroundColor Red
+# Verify account ID is exactly 12 digits (standard AWS Account ID)
+if ($accountId -match '^\d{12}$') {
+    Write-Host "🆔 Account ID: $accountId" -ForegroundColor Green
+    Write-Host "🌍 Target Region: $region" -ForegroundColor Cyan
+} else {
+    Write-Host "❌ ERROR: Could not retrieve a valid 12-digit AWS Account ID." -ForegroundColor Red
+    Write-Host "Raw ID detected: '$accountId'" -ForegroundColor Yellow
+    Write-Host "👉 Please ensure 'aws configure' is complete and you have internet access." -ForegroundColor Yellow
     exit
 }
-
-Write-Host "🆔 Account ID: $accountId" -ForegroundColor Green
-Write-Host "🌍 Target Region: $region" -ForegroundColor Cyan
 
 if (!(Test-Path "AWS_LAMBDA_PROXY.js")) {
     Write-Host "❌ Error: Could not find 'AWS_LAMBDA_PROXY.js' in this folder." -ForegroundColor Red
@@ -71,10 +65,12 @@ Write-Host "🚀 Deploying Lambda: Shamanth_Backend..." -ForegroundColor Yellow
 Write-Host "⏳ Waiting for IAM permissions to propagate (15s)..." -ForegroundColor Gray
 Start-Sleep -Seconds 15
 
+# Construct the ARN with the verified Account ID
 $lambdaRoleArn = "arn:aws:iam::$accountId:role/ShamanthLambdaRole"
 Write-Host "📍 Using Role: $lambdaRoleArn" -ForegroundColor Gray
 
-$exists = aws lambda get-function --function-name Shamanth_Backend 2>$null
+# Check if function exists
+aws lambda get-function --function-name Shamanth_Backend 2>$null
 if ($LASTEXITCODE -ne 0) {
     Write-Host "✨ Creating new function..." -ForegroundColor Gray
     aws lambda create-function `
@@ -91,6 +87,6 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 Write-Host "------------------------------------------" -ForegroundColor Green
-Write-Host "✅ Setup Attempt Finished!" -ForegroundColor Green
+Write-Host "✅ Backend Base Setup Complete!" -ForegroundColor Green
 Write-Host "Check your Lambda Console in region: $region" -ForegroundColor Cyan
 Write-Host "------------------------------------------" -ForegroundColor Green

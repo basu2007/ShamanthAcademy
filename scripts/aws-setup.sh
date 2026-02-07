@@ -9,19 +9,13 @@ echo "🛠️ Starting Shamanth Academy AWS Setup..."
 echo "------------------------------------------"
 
 # Check AWS Identity
-echo "👤 Checking AWS Identity..."
-IDENTITY_JSON=$(aws sts get-caller-identity --output json)
-if [ $? -ne 0 ]; then
-    echo "❌ ERROR: AWS CLI not configured. Run 'aws configure' first."
-    exit 1
-fi
-
-# Robust Account ID Extraction
-ACCOUNT_ID=$(echo $IDENTITY_JSON | grep -o '"Account": "[^"]*' | grep -o '[^"]*$')
+echo "👤 Fetching AWS Account Identity..."
+ACCOUNT_ID=$(aws sts get-caller-identity --query Account --output text | tr -d '\r')
 REGION=$(aws configure get region)
 
-if [ -z "$ACCOUNT_ID" ]; then
-    echo "❌ ERROR: Could not determine AWS Account ID."
+if [[ ! $ACCOUNT_ID =~ ^[0-9]{12}$ ]]; then
+    echo "❌ ERROR: Could not retrieve a valid 12-digit AWS Account ID."
+    echo "Raw ID detected: '$ACCOUNT_ID'"
     exit 1
 fi
 
@@ -78,6 +72,6 @@ aws lambda update-function-code \
     --zip-file fileb://function.zip
 
 echo "------------------------------------------"
-echo "✅ Setup Attempt Finished!"
+echo "✅ Backend Base Setup Complete!"
 echo "Check your Lambda Console in region: $REGION"
 echo "------------------------------------------"
