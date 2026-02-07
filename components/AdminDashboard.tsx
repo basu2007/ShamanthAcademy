@@ -77,18 +77,21 @@ const AdminDashboard: React.FC = () => {
         alert("Course Title is mandatory");
         return;
     }
-    const courseToSave = {
-      ...editingCourse,
+    
+    const finalPrice = editingCourse.price !== undefined ? Number(editingCourse.price) : 0;
+    
+    const courseToSave: Course = {
       id: editingCourse.id || `c_${Date.now()}`,
+      title: editingCourse.title,
       description: editingCourse.description || 'Expert training module at Shamanth Academy.',
       instructor: editingCourse.instructor || 'Shamanth Academy Team',
       category: editingCourse.category || 'General',
       thumbnail: editingCourse.thumbnail || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=800',
-      price: editingCourse.price !== undefined ? Number(editingCourse.price) : 0,
-      isFree: Number(editingCourse.price) === 0,
+      price: finalPrice,
+      isFree: finalPrice === 0,
       videos: editingCourse.videos || [],
       youtubeChannel: editingCourse.youtubeChannel || ''
-    } as Course;
+    };
     
     await db.saveCourse(courseToSave);
     setShowCourseForm(false);
@@ -102,7 +105,7 @@ const AdminDashboard: React.FC = () => {
   };
 
   const openCourseCreate = () => {
-    setEditingCourse({ videos: [], price: 4999 });
+    setEditingCourse({ videos: [], price: 4999, category: 'General' });
     setIsEditMode(false);
     setShowCourseForm(true);
   };
@@ -197,8 +200,8 @@ const AdminDashboard: React.FC = () => {
                Merchant Details
             </h3>
             <div className="space-y-4">
-              <div><label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Business UPI ID</label><input type="text" value={settings?.upiId} onChange={async (e) => { const s = {...settings!, upiId: e.target.value}; setSettings(s); await db.saveSettings(s); }} className="w-full mt-1 p-4 bg-slate-50 rounded-xl font-bold outline-none focus:ring-2 ring-indigo-500/20" /></div>
-              <div><label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Support Contact</label><input type="text" value={settings?.contactNumber} onChange={async (e) => { const s = {...settings!, contactNumber: e.target.value}; setSettings(s); await db.saveSettings(s); }} className="w-full mt-1 p-4 bg-slate-50 rounded-xl font-bold outline-none focus:ring-2 ring-indigo-500/20" /></div>
+              <div><label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Business UPI ID</label><input type="text" value={settings?.upiId} onChange={async (e) => { if(!settings) return; const s = {...settings, upiId: e.target.value}; setSettings(s); await db.saveSettings(s); }} className="w-full mt-1 p-4 bg-slate-50 rounded-xl font-bold outline-none focus:ring-2 ring-indigo-500/20" /></div>
+              <div><label className="text-[10px] font-black uppercase text-slate-400 tracking-widest">Support Contact</label><input type="text" value={settings?.contactNumber} onChange={async (e) => { if(!settings) return; const s = {...settings, contactNumber: e.target.value}; setSettings(s); await db.saveSettings(s); }} className="w-full mt-1 p-4 bg-slate-50 rounded-xl font-bold outline-none focus:ring-2 ring-indigo-500/20" /></div>
             </div>
           </div>
         </div>
@@ -304,7 +307,6 @@ const AdminDashboard: React.FC = () => {
               <div className="space-y-1">
                 <label className="text-[9px] font-black uppercase text-slate-400 ml-2">Category</label>
                 <select value={editingCourse.category || ''} onChange={e => setEditingCourse({...editingCourse, category: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none">
-                  <option value="">Select Category</option>
                   {settings?.categories.map(c => <option key={c} value={c}>{c}</option>)}
                 </select>
               </div>

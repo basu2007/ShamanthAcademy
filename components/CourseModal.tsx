@@ -15,13 +15,19 @@ interface CourseModalProps {
 const CourseModal: React.FC<CourseModalProps> = ({ course, user, onClose, onAuthRequired, onRefreshUser }) => {
   const isUnlocked = course.isFree || (user && user.enrolledCourses.includes(course.id)) || user?.role === 'ADMIN';
   const isPending = user?.pendingUnlocks.includes(course.id);
-  const [activeVideo, setActiveVideo] = useState<Video | null>(course.videos[0] || null);
+  const [activeVideo, setActiveVideo] = useState<Video | null>(null);
   const [showScanner, setShowScanner] = useState(false);
   const [settings, setSettings] = useState<PlatformSettings | null>(null);
   const [isSettingsLoading, setIsSettingsLoading] = useState(true);
   
   const [aiRoadmap, setAiRoadmap] = useState<string | null>(null);
   const [isAiLoading, setIsAiLoading] = useState(false);
+
+  useEffect(() => {
+    if (course.videos && course.videos.length > 0) {
+      setActiveVideo(course.videos[0]);
+    }
+  }, [course]);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -61,7 +67,15 @@ const CourseModal: React.FC<CourseModalProps> = ({ course, user, onClose, onAuth
   };
 
   const renderVideoPlayer = () => {
-    if (!activeVideo) return <div className="flex items-center justify-center h-full text-gray-500 font-bold">No Media Found</div>;
+    if (!activeVideo) {
+      return (
+        <div className="flex flex-col items-center justify-center h-full text-slate-400 bg-slate-900 p-10 text-center">
+           <i className="fa-solid fa-clapperboard text-5xl mb-4 opacity-20"></i>
+           <h3 className="text-xl font-black text-white">No Modules Uploaded</h3>
+           <p className="text-sm font-medium mt-2">The curriculum for this course is currently being prepared.</p>
+        </div>
+      );
+    }
 
     const isYouTube = activeVideo.url.includes('youtube.com') || activeVideo.url.includes('youtu.be');
 
@@ -93,15 +107,16 @@ const CourseModal: React.FC<CourseModalProps> = ({ course, user, onClose, onAuth
 
   return (
     <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-gray-900/80 backdrop-blur-sm" onClick={onClose}></div>
+      <div className="absolute inset-0 bg-slate-900/90 backdrop-blur-md" onClick={onClose}></div>
       
       <div className="bg-white rounded-[2.5rem] w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col md:flex-row shadow-2xl relative z-10 animate-in fade-in zoom-in duration-300">
+        {/* Close Button - Fixed Visibility */}
         <button 
           onClick={onClose} 
-          className="absolute top-6 right-6 z-20 w-10 h-10 rounded-full bg-white/10 text-white hover:bg-white/30 backdrop-blur-md transition-colors flex items-center justify-center border border-white/20"
+          className="absolute top-6 right-6 z-[110] w-12 h-12 rounded-full bg-slate-900 text-white hover:bg-indigo-600 shadow-2xl transition-all flex items-center justify-center border-4 border-white active:scale-90"
           title="Close Modal"
         >
-          <i className="fa-solid fa-xmark"></i>
+          <i className="fa-solid fa-xmark text-lg"></i>
         </button>
 
         {/* Player Section */}
@@ -114,15 +129,6 @@ const CourseModal: React.FC<CourseModalProps> = ({ course, user, onClose, onAuth
             <div className="flex flex-col items-center justify-center p-8 text-white h-full bg-gradient-to-b from-indigo-950 to-slate-950 overflow-y-auto">
               {showScanner ? (
                 <div className="text-center space-y-6 w-full max-w-sm animate-in slide-in-from-bottom-4 relative py-12">
-                  <button 
-                    onClick={() => setShowScanner(false)} 
-                    className="absolute -top-4 -right-4 md:-right-8 w-12 h-12 bg-white/5 hover:bg-white/20 rounded-full flex items-center justify-center text-white/40 hover:text-white transition-all"
-                    title="Cancel Payment"
-                  >
-                    <i className="fa-solid fa-chevron-left text-sm mr-1"></i>
-                    <i className="fa-solid fa-xmark"></i>
-                  </button>
-
                   <div className="bg-white p-6 rounded-[2.5rem] shadow-2xl inline-block relative min-w-[240px] w-full">
                     {isSettingsLoading ? (
                       <div className="w-48 h-48 flex flex-col items-center justify-center text-indigo-900 gap-3 mx-auto">
@@ -206,11 +212,11 @@ const CourseModal: React.FC<CourseModalProps> = ({ course, user, onClose, onAuth
         {/* Playlist & Details */}
         <div className="md:w-1/3 flex flex-col h-full bg-white border-l border-slate-100">
           <div className="p-8 border-b border-slate-50">
-            <h2 className="font-black text-xl text-slate-900 leading-tight mb-2">{course.title}</h2>
+            <h2 className="font-black text-xl text-slate-900 leading-tight mb-2 pr-12">{course.title}</h2>
             <div className="flex items-center gap-2">
               <span className="text-[10px] font-black text-indigo-600 bg-indigo-50 px-2.5 py-1 rounded-lg uppercase tracking-widest">{course.instructor}</span>
               <span className="text-[10px] text-slate-300">•</span>
-              <span className="text-[10px] font-bold text-slate-400 uppercase">{course.videos.length} Modules</span>
+              <span className="text-[10px] font-bold text-slate-400 uppercase">{(course.videos || []).length} Modules</span>
             </div>
           </div>
 
@@ -223,24 +229,30 @@ const CourseModal: React.FC<CourseModalProps> = ({ course, user, onClose, onAuth
                 <button onClick={() => setAiRoadmap(null)} className="mt-6 w-full py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-[10px] font-black uppercase border border-white/10 transition-all">Show Playlist</button>
               </div>
             ) : (
-              course.videos.map((vid, idx) => (
-                <button
-                  key={vid.id}
-                  disabled={!isUnlocked}
-                  onClick={() => setActiveVideo(vid)}
-                  className={`w-full text-left p-4 rounded-2xl flex items-center gap-4 border transition-all ${
-                    !isUnlocked ? 'opacity-40 grayscale cursor-not-allowed' : 'hover:bg-white hover:shadow-lg'
-                  } ${activeVideo?.id === vid.id ? 'bg-white border-indigo-200 shadow-xl ring-2 ring-indigo-50' : 'bg-transparent border-transparent'}`}
-                >
-                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs ${activeVideo?.id === vid.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                    {isUnlocked ? (activeVideo?.id === vid.id ? <i className="fa-solid fa-play text-[10px] animate-pulse"></i> : idx + 1) : <i className="fa-solid fa-lock text-[10px]"></i>}
-                  </div>
-                  <div className="flex-grow min-w-0">
-                    <div className={`text-xs font-bold truncate ${activeVideo?.id === vid.id ? 'text-indigo-900' : 'text-slate-700'}`}>{vid.title}</div>
-                    <div className="text-[9px] font-black text-slate-400 uppercase mt-0.5">{vid.duration}</div>
-                  </div>
-                </button>
-              ))
+              (course.videos || []).length > 0 ? (
+                course.videos.map((vid, idx) => (
+                  <button
+                    key={vid.id}
+                    disabled={!isUnlocked}
+                    onClick={() => setActiveVideo(vid)}
+                    className={`w-full text-left p-4 rounded-2xl flex items-center gap-4 border transition-all ${
+                      !isUnlocked ? 'opacity-40 grayscale cursor-not-allowed' : 'hover:bg-white hover:shadow-lg'
+                    } ${activeVideo?.id === vid.id ? 'bg-white border-indigo-200 shadow-xl ring-2 ring-indigo-50' : 'bg-transparent border-transparent'}`}
+                  >
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs ${activeVideo?.id === vid.id ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                      {isUnlocked ? (activeVideo?.id === vid.id ? <i className="fa-solid fa-play text-[10px] animate-pulse"></i> : idx + 1) : <i className="fa-solid fa-lock text-[10px]"></i>}
+                    </div>
+                    <div className="flex-grow min-w-0">
+                      <div className={`text-xs font-bold truncate ${activeVideo?.id === vid.id ? 'text-indigo-900' : 'text-slate-700'}`}>{vid.title}</div>
+                      <div className="text-[9px] font-black text-slate-400 uppercase mt-0.5">{vid.duration}</div>
+                    </div>
+                  </button>
+                ))
+              ) : (
+                <div className="py-20 text-center opacity-30 italic text-xs font-bold text-slate-400">
+                  Curriculum Playlist Empty
+                </div>
+              )
             )}
           </div>
 
