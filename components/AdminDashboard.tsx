@@ -419,7 +419,10 @@ const AdminDashboard: React.FC = () => {
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setShowBatchForm(false)}></div>
           <div className="bg-white rounded-[2.5rem] w-full max-w-xl p-10 relative z-10 animate-in zoom-in">
-            <h2 className="text-2xl font-black mb-8 text-slate-900">Schedule Batch</h2>
+            <div className="flex justify-between items-start mb-8">
+              <h2 className="text-2xl font-black text-slate-900">Schedule Batch</h2>
+              <button onClick={() => setShowBatchForm(false)} className="text-slate-300 hover:text-red-500 transition-all"><i className="fa-solid fa-circle-xmark text-2xl"></i></button>
+            </div>
             <div className="space-y-4 mb-8">
               <input type="text" placeholder="Batch Title" value={editingBatch.title} onChange={e => setEditingBatch({...editingBatch, title: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
               <div className="grid grid-cols-2 gap-4">
