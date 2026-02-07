@@ -16,6 +16,7 @@ const AdminDashboard: React.FC = () => {
   const [editingBatch, setEditingBatch] = useState<Partial<Batch>>({});
   const [showCourseForm, setShowCourseForm] = useState(false);
   const [editingCourse, setEditingCourse] = useState<Partial<Course>>({ videos: [] });
+  const [isEditMode, setIsEditMode] = useState(false);
 
   // Module addition state
   const [newVideo, setNewVideo] = useState<Partial<Video>>({ title: '', url: '', duration: '10:00' });
@@ -76,22 +77,34 @@ const AdminDashboard: React.FC = () => {
         alert("Course Title is mandatory");
         return;
     }
-    const course = {
+    const courseToSave = {
       ...editingCourse,
       id: editingCourse.id || `c_${Date.now()}`,
       description: editingCourse.description || 'Expert training module at Shamanth Academy.',
       instructor: editingCourse.instructor || 'Shamanth Academy Team',
       category: editingCourse.category || 'General',
       thumbnail: editingCourse.thumbnail || 'https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&q=80&w=800',
-      price: editingCourse.price || 0,
-      isFree: (editingCourse.price || 0) === 0,
+      price: editingCourse.price !== undefined ? Number(editingCourse.price) : 0,
+      isFree: Number(editingCourse.price) === 0,
       videos: editingCourse.videos || [],
       youtubeChannel: editingCourse.youtubeChannel || ''
     } as Course;
     
-    await db.saveCourse(course);
+    await db.saveCourse(courseToSave);
     setShowCourseForm(false);
     refreshData();
+  };
+
+  const openCourseEdit = (course: Course) => {
+    setEditingCourse({ ...course });
+    setIsEditMode(true);
+    setShowCourseForm(true);
+  };
+
+  const openCourseCreate = () => {
+    setEditingCourse({ videos: [], price: 4999 });
+    setIsEditMode(false);
+    setShowCourseForm(true);
   };
 
   const pendingRequests = users.flatMap(user => 
@@ -220,7 +233,7 @@ const AdminDashboard: React.FC = () => {
         <div className="space-y-8 animate-in fade-in">
           <div className="flex justify-between items-center">
             <h2 className="text-2xl font-black text-slate-900 tracking-tighter">Master Curriculum</h2>
-            <button onClick={() => { setEditingCourse({ videos: [], price: 4999 }); setShowCourseForm(true); }} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase shadow-lg">Push Course</button>
+            <button onClick={openCourseCreate} className="bg-indigo-600 text-white px-6 py-3 rounded-xl font-black text-[10px] uppercase shadow-lg">Push Course</button>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
             {courses.map(c => (
@@ -229,7 +242,7 @@ const AdminDashboard: React.FC = () => {
                 <div className="p-5">
                    <h3 className="font-black text-slate-900 text-sm mb-4 truncate">{c.title}</h3>
                    <div className="flex gap-2">
-                     <button onClick={() => { setEditingCourse(c); setShowCourseForm(true); }} className="flex-grow bg-slate-50 text-slate-400 py-2 rounded-xl text-[9px] font-black uppercase">Modify</button>
+                     <button onClick={() => openCourseEdit(c)} className="flex-grow bg-slate-50 text-slate-400 py-2 rounded-xl text-[9px] font-black uppercase">Modify</button>
                      <button onClick={async () => { await db.deleteCourse(c.id); refreshData(); }} className="px-3 py-2 bg-red-50 text-red-500 rounded-xl hover:bg-red-500 hover:text-white"><i className="fa-solid fa-trash"></i></button>
                    </div>
                 </div>
@@ -267,21 +280,51 @@ const AdminDashboard: React.FC = () => {
         <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm" onClick={() => setShowCourseForm(false)}></div>
           <div className="bg-white rounded-[2.5rem] w-full max-w-4xl p-10 relative z-10 animate-in zoom-in max-h-[90vh] overflow-y-auto">
-            <h2 className="text-2xl font-black mb-8 text-slate-900">Push New Course</h2>
+            <div className="flex justify-between items-start mb-8">
+              <div>
+                <h2 className="text-2xl font-black text-slate-900">{isEditMode ? 'Update Existing Course' : 'Push New Course'}</h2>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">Syncing with courses.csv</p>
+              </div>
+              <button onClick={() => setShowCourseForm(false)} className="text-slate-300 hover:text-red-500"><i className="fa-solid fa-circle-xmark text-2xl"></i></button>
+            </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-              <input type="text" placeholder="Course Title" value={editingCourse.title} onChange={e => setEditingCourse({...editingCourse, title: e.target.value})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
-              <input type="text" placeholder="Instructor" value={editingCourse.instructor} onChange={e => setEditingCourse({...editingCourse, instructor: e.target.value})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
-              <input type="number" placeholder="Price (INR)" value={editingCourse.price} onChange={e => setEditingCourse({...editingCourse, price: Number(e.target.value)})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
-              <select value={editingCourse.category} onChange={e => setEditingCourse({...editingCourse, category: e.target.value})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none">
-                 {settings?.categories.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <input type="text" placeholder="Youtube Channel Path" value={editingCourse.youtubeChannel || ''} onChange={e => setEditingCourse({...editingCourse, youtubeChannel: e.target.value})} className="p-4 bg-slate-50 rounded-2xl font-bold outline-none col-span-1 md:col-span-2" />
+              <div className="space-y-1">
+                <label className="text-[9px] font-black uppercase text-slate-400 ml-2">Title</label>
+                <input type="text" placeholder="e.g. React Mastery" value={editingCourse.title || ''} onChange={e => setEditingCourse({...editingCourse, title: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black uppercase text-slate-400 ml-2">Instructor</label>
+                <input type="text" placeholder="e.g. Shamanth" value={editingCourse.instructor || ''} onChange={e => setEditingCourse({...editingCourse, instructor: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black uppercase text-slate-400 ml-2">Price (INR)</label>
+                <input type="number" placeholder="4999" value={editingCourse.price || 0} onChange={e => setEditingCourse({...editingCourse, price: Number(e.target.value)})} className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[9px] font-black uppercase text-slate-400 ml-2">Category</label>
+                <select value={editingCourse.category || ''} onChange={e => setEditingCourse({...editingCourse, category: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none">
+                  <option value="">Select Category</option>
+                  {settings?.categories.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="space-y-1 md:col-span-2">
+                <label className="text-[9px] font-black uppercase text-slate-400 ml-2">Description</label>
+                <textarea placeholder="Tell students about this course..." value={editingCourse.description || ''} onChange={e => setEditingCourse({...editingCourse, description: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none h-24" />
+              </div>
+              <div className="space-y-1 md:col-span-2">
+                <label className="text-[9px] font-black uppercase text-slate-400 ml-2">Thumbnail URL</label>
+                <input type="text" placeholder="https://image-url.com" value={editingCourse.thumbnail || ''} onChange={e => setEditingCourse({...editingCourse, thumbnail: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
+              </div>
+              <div className="space-y-1 md:col-span-2">
+                <label className="text-[9px] font-black uppercase text-slate-400 ml-2">Youtube Channel Path</label>
+                <input type="text" placeholder="Official Channel Link/Name" value={editingCourse.youtubeChannel || ''} onChange={e => setEditingCourse({...editingCourse, youtubeChannel: e.target.value})} className="w-full p-4 bg-slate-50 rounded-2xl font-bold outline-none" />
+              </div>
             </div>
 
             {/* Video Modules Management */}
             <div className="mb-10">
-              <h3 className="text-sm font-black uppercase text-slate-400 mb-4 tracking-widest">Manage Video Modules</h3>
+              <h3 className="text-sm font-black uppercase text-slate-400 mb-4 tracking-widest">Manage Video Modules ({editingCourse.videos?.length || 0})</h3>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 mb-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                 <input type="text" placeholder="Module Title" value={newVideo.title} onChange={e => setNewVideo({...newVideo, title: e.target.value})} className="p-3 bg-white rounded-xl text-xs font-bold" />
                 <input type="text" placeholder="Video URL (YouTube/MP4)" value={newVideo.url} onChange={e => setNewVideo({...newVideo, url: e.target.value})} className="p-3 bg-white rounded-xl text-xs font-bold" />
@@ -290,19 +333,21 @@ const AdminDashboard: React.FC = () => {
 
               <div className="space-y-2">
                 {(editingCourse.videos || []).map((v, i) => (
-                  <div key={v.id} className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl">
+                  <div key={v.id} className="flex items-center justify-between p-3 bg-white border border-slate-100 rounded-xl group">
                     <div className="flex items-center gap-3">
                       <span className="text-[10px] font-black text-slate-300">#{i+1}</span>
                       <span className="text-xs font-bold text-slate-700">{v.title}</span>
                       <span className="text-[9px] font-medium text-slate-400 truncate max-w-[150px]">{v.url}</span>
                     </div>
-                    <button onClick={() => removeVideoModule(v.id)} className="text-red-400 hover:text-red-600 text-xs px-2"><i className="fa-solid fa-trash-can"></i></button>
+                    <button onClick={() => removeVideoModule(v.id)} className="text-red-300 hover:text-red-600 text-xs px-2 opacity-0 group-hover:opacity-100 transition-all"><i className="fa-solid fa-trash-can"></i></button>
                   </div>
                 ))}
               </div>
             </div>
 
-            <button onClick={handleSaveCourse} className="w-full bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl">Update courses.csv</button>
+            <button onClick={handleSaveCourse} className="w-full bg-slate-900 hover:bg-indigo-600 text-white py-4 rounded-2xl font-black uppercase tracking-widest shadow-xl transition-all">
+               {isEditMode ? 'Commit Changes' : 'Update courses.csv'}
+            </button>
           </div>
         </div>
       )}

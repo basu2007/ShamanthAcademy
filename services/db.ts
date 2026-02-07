@@ -4,7 +4,7 @@ import { ADMIN_CREDENTIALS, MOCK_COURSES } from '../constants';
 
 /**
  * SHAMANTH ACADEMY: AUTO-CSV ENGINE (OPFS)
- * This engine uses the Origin Private File System to manage CSVs automatically.
+ * Enhanced with robust schema detection to prevent data loss.
  */
 
 let rootHandle: FileSystemDirectoryHandle | null = null;
@@ -19,17 +19,25 @@ let memory_settings: PlatformSettings = {
   flashNews: ['System: Application Private Folder Active']
 };
 
-// Helper: Object Array to CSV
+// Helper: Object Array to CSV with Robust Header Detection
 const toCSV = (data: any[]) => {
   if (!data || data.length === 0) return '';
-  const headers = Object.keys(data[0]).join(',');
+  
+  // Collect all unique keys from all objects to ensure no columns are dropped
+  const allKeys = new Set<string>();
+  data.forEach(obj => Object.keys(obj).forEach(key => allKeys.add(key)));
+  const headers = Array.from(allKeys);
+  
   const rows = data.map(obj => 
-    Object.values(obj).map(val => {
+    headers.map(header => {
+      const val = obj[header];
+      if (val === undefined || val === null) return '""';
       const stringified = typeof val === 'object' ? JSON.stringify(val) : String(val);
       return `"${stringified.replace(/"/g, '""')}"`;
     }).join(',')
   );
-  return [headers, ...rows].join('\n');
+  
+  return [headers.join(','), ...rows].join('\n');
 };
 
 // Helper: CSV to Object Array
@@ -45,7 +53,7 @@ const fromCSV = (csv: string): any[] => {
       try {
         if (val && (val.startsWith('[') || val.startsWith('{'))) {
           obj[h] = JSON.parse(val);
-        } else if (!isNaN(Number(val)) && val !== '' && h !== 'pin') {
+        } else if (!isNaN(Number(val)) && val !== '' && h !== 'pin' && !val.includes('-')) {
           obj[h] = Number(val);
         } else {
           obj[h] = val;
@@ -78,10 +86,12 @@ export const initDatabase = async (): Promise<boolean> => {
         const file = await handle.getFile();
         const text = await file.text();
         const data = fromCSV(text);
-        if (f === 'users.csv' && data.length) memory_users = data;
-        if (f === 'courses.csv' && data.length) memory_courses = data;
-        if (f === 'batches.csv' && data.length) memory_batches = data;
-        if (f === 'settings.csv' && data.length) memory_settings = data[0];
+        if (data.length > 0) {
+          if (f === 'users.csv') memory_users = data;
+          if (f === 'courses.csv') memory_courses = data;
+          if (f === 'batches.csv') memory_batches = data;
+          if (f === 'settings.csv') memory_settings = data[0];
+        }
       } catch (e) {
         console.log(`Auto-creating ${f}...`);
         await syncFile(f);
@@ -121,7 +131,11 @@ export const loginUser = async (email: string, pin: string) => {
 
 export const saveCourse = async (course: Course) => {
   const idx = memory_courses.findIndex(c => c.id === course.id);
-  if (idx !== -1) memory_courses[idx] = course; else memory_courses.push(course);
+  if (idx !== -1) {
+    memory_courses[idx] = { ...memory_courses[idx], ...course };
+  } else {
+    memory_courses.push(course);
+  }
   await syncFile('courses.csv');
 };
 
@@ -132,7 +146,8 @@ export const deleteCourse = async (id: string) => {
 
 export const saveBatch = async (batch: Batch) => {
   const idx = memory_batches.findIndex(b => b.id === batch.id);
-  if (idx !== -1) memory_batches[idx] = batch; else memory_batches.push(batch);
+  if (idx !== -1) memory_batches[idx] = { ...memory_batches[idx], ...batch }; 
+  else memory_batches.push(batch);
   await syncFile('batches.csv');
 };
 
