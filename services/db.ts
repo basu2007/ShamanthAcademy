@@ -86,19 +86,25 @@ export const initDatabase = async (): Promise<boolean> => {
         const file = await handle.getFile();
         const text = await file.text();
         const data = fromCSV(text);
-        if (data.length > 0) {
-          if (f === 'users.csv') memory_users = data;
-          if (f === 'courses.csv') memory_courses = data;
-          if (f === 'batches.csv') memory_batches = data;
-          if (f === 'settings.csv') memory_settings = data[0];
+        
+        // If file exists, we trust it, even if empty (user might have deleted all)
+        if (f === 'users.csv') memory_users = data;
+        if (f === 'courses.csv') {
+          // If the CSV has data, use it. If not, only use mock if it's a first-time load
+          if (data.length > 0) memory_courses = data;
         }
+        if (f === 'batches.csv') memory_batches = data;
+        if (f === 'settings.csv' && data.length > 0) memory_settings = data[0];
       } catch (e) {
         console.log(`Auto-creating ${f}...`);
         await syncFile(f);
       }
     }
     return true;
-  } catch (err) { return false; }
+  } catch (err) { 
+    console.error("Database initialization failed:", err);
+    return false; 
+  }
 };
 
 const syncFile = async (name: string) => {

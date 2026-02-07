@@ -42,6 +42,8 @@ const App: React.FC = () => {
   useEffect(() => {
     const initApp = async () => {
       setIsLoading(true);
+      // CRITICAL: Initialize database to load CSV files into memory
+      await db.initDatabase();
       await refreshCourseData();
       await refreshSettings();
       setIsLoading(false);
@@ -140,12 +142,13 @@ const App: React.FC = () => {
             )}
 
             <div ref={coursesRef} className="scroll-mt-24">
-              <div className="flex flex-wrap gap-3 mb-10 justify-center sm:justify-start">
+              {/* Category Bar - Mobile Scrollable */}
+              <div className="flex flex-nowrap overflow-x-auto pb-4 gap-3 mb-10 justify-start sm:justify-start scrollbar-hide no-scrollbar">
                 {availableCategories.map(cat => (
                   <button
                     key={cat}
                     onClick={() => setSelectedCategory(cat)}
-                    className={`px-6 py-2.5 rounded-xl font-bold transition-all ${
+                    className={`px-6 py-2.5 rounded-xl font-bold transition-all flex-shrink-0 whitespace-nowrap ${
                       selectedCategory === cat 
                       ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-100' 
                       : 'bg-white text-gray-500 border border-gray-100 hover:border-indigo-300 hover:text-indigo-600'
@@ -205,6 +208,16 @@ const App: React.FC = () => {
           onLogin={handleLogin}
         />
       )}
+
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar {
+          display: none;
+        }
+        .no-scrollbar {
+          -ms-overflow-style: none;
+          scrollbar-width: none;
+        }
+      `}</style>
     </div>
   );
 };
