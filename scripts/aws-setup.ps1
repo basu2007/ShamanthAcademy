@@ -1,12 +1,22 @@
-# Shamanth Academy - Automated AWS Backend Setup (Windows PowerShell)
+
+# Shamanth Academy - Verbose AWS Backend Setup (Windows)
 
 Write-Host "`n🚀 Initializing Shamanth Academy Setup Script..." -ForegroundColor Cyan
 
-# Check if running in the correct directory
+# 0. Check AWS Configuration
+Write-Host "👤 Checking AWS Identity..." -ForegroundColor Gray
+$identity = aws sts get-caller-identity
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "❌ ERROR: AWS CLI is not configured or credentials expired." -ForegroundColor Red
+    Write-Host "👉 Run 'aws configure' to set your access keys." -ForegroundColor Yellow
+    exit
+}
+
+$region = aws configure get region
+Write-Host "🌍 Target Region: $region" -ForegroundColor Cyan
+
 if (!(Test-Path "AWS_LAMBDA_PROXY.js")) {
     Write-Host "❌ Error: Could not find 'AWS_LAMBDA_PROXY.js' in this folder." -ForegroundColor Red
-    Write-Host "👉 You are currently in: $((Get-Location).Path)" -ForegroundColor Gray
-    Write-Host "👉 Please 'cd' into the folder that contains AWS_LAMBDA_PROXY.js" -ForegroundColor Yellow
     exit
 }
 
@@ -20,7 +30,7 @@ aws dynamodb create-table `
     --table-name Shamanth_Users `
     --attribute-definitions AttributeName=id,AttributeType=S `
     --key-schema AttributeName=id,KeyType=HASH `
-    --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5 2>$null
+    --provisioned-throughput ReadCapacityUnits=5,WriteCapacityUnits=5
 
 # 2. Setup IAM Role
 Write-Host "🔐 Setting up IAM Roles..." -ForegroundColor Yellow
@@ -38,7 +48,7 @@ $trustPolicy = @'
 '@
 $trustPolicy | Out-File -FilePath trust-policy.json -Encoding ascii
 
-aws iam create-role --role-name ShamanthLambdaRole --assume-role-policy-document file://trust-policy.json 2>$null
+aws iam create-role --role-name ShamanthLambdaRole --assume-role-policy-document file://trust-policy.json
 aws iam attach-role-policy --role-name ShamanthLambdaRole --policy-arn arn:aws:iam::aws:policy/AmazonDynamoDBFullAccess
 aws iam attach-role-policy --role-name ShamanthLambdaRole --policy-arn arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
 
@@ -50,12 +60,12 @@ Compress-Archive -Path AWS_LAMBDA_PROXY.js -DestinationPath function.zip
 Write-Host "🚀 Deploying Lambda: Shamanth_Backend..." -ForegroundColor Yellow
 $accountId = aws sts get-caller-identity --query Account --output text
 
-# IAM propagation delay
-Write-Host "⏳ Waiting for IAM permissions to propagate (10s)..." -ForegroundColor Gray
-Start-Sleep -Seconds 10
+Write-Host "⏳ Waiting for IAM permissions to propagate (15s)..." -ForegroundColor Gray
+Start-Sleep -Seconds 15
 
-$exists = aws lambda get-function --function-name Shamanth_Backend 2>$null
-if ($null -eq $exists) {
+$exists = aws lambda get-function --function-name Shamanth_Backend
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "✨ Creating new function..." -ForegroundColor Gray
     aws lambda create-function `
         --function-name Shamanth_Backend `
         --runtime nodejs18.x `
@@ -63,12 +73,13 @@ if ($null -eq $exists) {
         --handler AWS_LAMBDA_PROXY.handler `
         --zip-file fileb://function.zip
 } else {
+    Write-Host "🔄 Updating existing function..." -ForegroundColor Gray
     aws lambda update-function-code `
         --function-name Shamanth_Backend `
         --zip-file fileb://function.zip
 }
 
 Write-Host "------------------------------------------" -ForegroundColor Green
-Write-Host "✅ Backend Base Setup Complete!" -ForegroundColor Green
-Write-Host "Next Step: Follow Phase 2 in AWS_DEPLOYMENT_GUIDE.md" -ForegroundColor Green
+Write-Host "✅ Setup Attempt Finished!" -ForegroundColor Green
+Write-Host "Check your Lambda Console in region: $region" -ForegroundColor Cyan
 Write-Host "------------------------------------------" -ForegroundColor Green
